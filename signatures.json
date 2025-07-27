@@ -1,0 +1,571 @@
+{
+  "signatures": [
+    {
+      "name": "JPEG Image",
+      "extension": ".jpg",
+      "header": "FFD8FF",
+      "footer": "FFD9",
+      "max_size": 10485760,
+      "footer_search_offset": 1024,
+      "description": "תמונת JPEG סטנדרטית"
+    },
+    {
+      "name": "PNG Image",
+      "extension": ".png",
+      "header": "89504E470D0A1A0A",
+      "footer": "49454E44AE426082",
+      "max_size": 52428800,
+      "footer_search_offset": 2048,
+      "description": "תמונת PNG"
+    },
+    {
+      "name": "GIF Image",
+      "extension": ".gif",
+      "header": "474946383761",
+      "footer": "003B",
+      "max_size": 10485760,
+      "footer_search_offset": 1024,
+      "description": "תמונת GIF"
+    },
+    {
+      "name": "BMP Image",
+      "extension": ".bmp",
+      "header": "424D",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "תמונת BMP"
+    },
+    {
+      "name": "TIFF Image",
+      "extension": ".tiff",
+      "header": "49492A00",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "תמונת TIFF (Little Endian)"
+    },
+    {
+      "name": "TIFF Image BE",
+      "extension": ".tiff",
+      "header": "4D4D002A",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "תמונת TIFF (Big Endian)"
+    },
+    {
+      "name": "WebP Image",
+      "extension": ".webp",
+      "header": "52494646",
+      "footer": "",
+      "max_size": 52428800,
+      "footer_search_offset": 0,
+      "description": "תמונת WebP"
+    },
+    {
+      "name": "Canon CR2 RAW",
+      "extension": ".cr2",
+      "header": "49492A00100000004352",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "תמונת RAW של Canon"
+    },
+    {
+      "name": "Nikon NEF RAW",
+      "extension": ".nef",
+      "header": "4D4D002A",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "תמונת RAW של Nikon"
+    },
+    {
+      "name": "Sony ARW RAW",
+      "extension": ".arw",
+      "header": "49492A00",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "תמונת RAW של Sony"
+    },
+    {
+      "name": "PDF Document",
+      "extension": ".pdf",
+      "header": "255044462D",
+      "footer": "0A2525454F46",
+      "max_size": 104857600,
+      "footer_search_offset": 4096,
+      "description": "מסמך PDF"
+    },
+    {
+      "name": "Microsoft Word Document",
+      "extension": ".docx",
+      "header": "504B030414000600",
+      "footer": "504B0506",
+      "max_size": 52428800,
+      "footer_search_offset": 4096,
+      "description": "מסמך Word חדש"
+    },
+    {
+      "name": "Microsoft Word Legacy",
+      "extension": ".doc",
+      "header": "D0CF11E0A1B11AE1",
+      "footer": "",
+      "max_size": 52428800,
+      "footer_search_offset": 0,
+      "description": "מסמך Word ישן"
+    },
+    {
+      "name": "Microsoft Excel",
+      "extension": ".xlsx",
+      "header": "504B030414000600",
+      "footer": "504B0506",
+      "max_size": 52428800,
+      "footer_search_offset": 4096,
+      "description": "גיליון Excel חדש"
+    },
+    {
+      "name": "Microsoft Excel Legacy",
+      "extension": ".xls",
+      "header": "D0CF11E0A1B11AE1",
+      "footer": "",
+      "max_size": 52428800,
+      "footer_search_offset": 0,
+      "description": "גיליון Excel ישן"
+    },
+    {
+      "name": "Microsoft PowerPoint",
+      "extension": ".pptx",
+      "header": "504B030414000600",
+      "footer": "504B0506",
+      "max_size": 104857600,
+      "footer_search_offset": 4096,
+      "description": "מצגת PowerPoint חדשה"
+    },
+    {
+      "name": "Microsoft PowerPoint Legacy",
+      "extension": ".ppt",
+      "header": "D0CF11E0A1B11AE1",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "מצגת PowerPoint ישנה"
+    },
+    {
+      "name": "RTF Document",
+      "extension": ".rtf",
+      "header": "7B5C727466",
+      "footer": "7D",
+      "max_size": 52428800,
+      "footer_search_offset": 1024,
+      "description": "מסמך RTF"
+    },
+    {
+      "name": "OpenDocument Text",
+      "extension": ".odt",
+      "header": "504B030414000600",
+      "footer": "504B0506",
+      "max_size": 52428800,
+      "footer_search_offset": 4096,
+      "description": "מסמך OpenDocument"
+    },
+    {
+      "name": "ZIP Archive",
+      "extension": ".zip",
+      "header": "504B0304",
+      "footer": "504B0506",
+      "max_size": 1073741824,
+      "footer_search_offset": 8192,
+      "description": "ארכיון ZIP"
+    },
+    {
+      "name": "RAR Archive",
+      "extension": ".rar",
+      "header": "526172211A0700",
+      "footer": "",
+      "max_size": 1073741824,
+      "footer_search_offset": 0,
+      "description": "ארכיון RAR"
+    },
+    {
+      "name": "7-Zip Archive",
+      "extension": ".7z",
+      "header": "377ABCAF271C",
+      "footer": "",
+      "max_size": 1073741824,
+      "footer_search_offset": 0,
+      "description": "ארכיון 7-Zip"
+    },
+    {
+      "name": "GZIP Archive",
+      "extension": ".gz",
+      "header": "1F8B08",
+      "footer": "",
+      "max_size": 1073741824,
+      "footer_search_offset": 0,
+      "description": "ארכיון GZIP"
+    },
+    {
+      "name": "TAR Archive",
+      "extension": ".tar",
+      "header": "7573746172",
+      "footer": "",
+      "max_size": 1073741824,
+      "footer_search_offset": 0,
+      "description": "ארכיון TAR"
+    },
+    {
+      "name": "MP4 Video",
+      "extension": ".mp4",
+      "header": "000000186674797033677034",
+      "footer": "",
+      "max_size": 4294967296,
+      "footer_search_offset": 0,
+      "description": "וידאו MP4"
+    },
+    {
+      "name": "Canon MOV Video",
+      "extension": ".mov",
+      "header": "0000001466747970717420",
+      "footer": "",
+      "max_size": 4294967296,
+      "footer_search_offset": 0,
+      "description": "וידאו Canon MOV"
+    },
+    {
+      "name": "AVI Video",
+      "extension": ".avi",
+      "header": "52494646",
+      "footer": "",
+      "max_size": 4294967296,
+      "footer_search_offset": 0,
+      "description": "וידאו AVI"
+    },
+    {
+      "name": "MKV Video",
+      "extension": ".mkv",
+      "header": "1A45DFA3",
+      "footer": "",
+      "max_size": 4294967296,
+      "footer_search_offset": 0,
+      "description": "וידאו MKV"
+    },
+    {
+      "name": "FLV Video",
+      "extension": ".flv",
+      "header": "464C5601",
+      "footer": "",
+      "max_size": 1073741824,
+      "footer_search_offset": 0,
+      "description": "וידאו FLV"
+    },
+    {
+      "name": "WMV Video",
+      "extension": ".wmv",
+      "header": "3026B2758E66CF11",
+      "footer": "",
+      "max_size": 2147483648,
+      "footer_search_offset": 0,
+      "description": "וידאו WMV"
+    },
+    {
+      "name": "MP3 Audio",
+      "extension": ".mp3",
+      "header": "494433",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "אודיו MP3 עם ID3"
+    },
+    {
+      "name": "MP3 Audio (Frame)",
+      "extension": ".mp3",
+      "header": "FFFB",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "אודיו MP3 ללא ID3"
+    },
+    {
+      "name": "WAV Audio",
+      "extension": ".wav",
+      "header": "52494646",
+      "footer": "",
+      "max_size": 1073741824,
+      "footer_search_offset": 0,
+      "description": "אודיו WAV"
+    },
+    {
+      "name": "FLAC Audio",
+      "extension": ".flac",
+      "header": "664C6143",
+      "footer": "",
+      "max_size": 1073741824,
+      "footer_search_offset": 0,
+      "description": "אודיו FLAC"
+    },
+    {
+      "name": "AAC Audio",
+      "extension": ".aac",
+      "header": "FFF1",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "אודיו AAC"
+    },
+    {
+      "name": "OGG Audio",
+      "extension": ".ogg",
+      "header": "4F676753",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "אודיו OGG"
+    },
+    {
+      "name": "SQLite Database",
+      "extension": ".db",
+      "header": "53514C69746520666F726D6174203300",
+      "footer": "",
+      "max_size": 1073741824,
+      "footer_search_offset": 0,
+      "description": "מסד נתונים SQLite"
+    },
+    {
+      "name": "MySQL Database",
+      "extension": ".mdb",
+      "header": "0000000000000000",
+      "footer": "",
+      "max_size": 2147483648,
+      "footer_search_offset": 0,
+      "description": "מסד נתונים MySQL"
+    },
+    {
+      "name": "Access Database",
+      "extension": ".mdb",
+      "header": "5374616E64617264204A6574204442",
+      "footer": "",
+      "max_size": 2147483648,
+      "footer_search_offset": 0,
+      "description": "מסד נתונים Access"
+    },
+    {
+      "name": "PostgreSQL Database",
+      "extension": ".pgdata",
+      "header": "5047444D50",
+      "footer": "",
+      "max_size": 1073741824,
+      "footer_search_offset": 0,
+      "description": "מסד נתונים PostgreSQL"
+    },
+    {
+      "name": "Windows Executable",
+      "extension": ".exe",
+      "header": "4D5A",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "קובץ הפעלה Windows"
+    },
+    {
+      "name": "DLL Library",
+      "extension": ".dll",
+      "header": "4D5A",
+      "footer": "",
+      "max_size": 52428800,
+      "footer_search_offset": 0,
+      "description": "ספרייה DLL"
+    },
+    {
+      "name": "ELF Executable",
+      "extension": ".elf",
+      "header": "7F454C46",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "קובץ הפעלה Linux/Unix"
+    },
+    {
+      "name": "Mach-O Executable",
+      "extension": ".macho",
+      "header": "FEEDFACE",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "קובץ הפעלה macOS"
+    },
+    {
+      "name": "CAB Archive",
+      "extension": ".cab",
+      "header": "4D534346",
+      "footer": "",
+      "max_size": 1073741824,
+      "footer_search_offset": 0,
+      "description": "ארכיון Windows CAB"
+    },
+    {
+      "name": "MSI Installer",
+      "extension": ".msi",
+      "header": "D0CF11E0A1B11AE1",
+      "footer": "",
+      "max_size": 1073741824,
+      "footer_search_offset": 0,
+      "description": "מתקין Windows MSI"
+    },
+    {
+      "name": "ISO Image",
+      "extension": ".iso",
+      "header": "4344303031",
+      "footer": "",
+      "max_size": 4294967296,
+      "footer_search_offset": 0,
+      "description": "תמונת דיסק ISO"
+    },
+    {
+      "name": "DMG Image",
+      "extension": ".dmg",
+      "header": "78017A444D47",
+      "footer": "",
+      "max_size": 4294967296,
+      "footer_search_offset": 0,
+      "description": "תמונת דיסק macOS"
+    },
+    {
+      "name": "VHD Image",
+      "extension": ".vhd",
+      "header": "636F6E6563746978",
+      "footer": "",
+      "max_size": 4294967296,
+      "footer_search_offset": 0,
+      "description": "תמונת דיסק וירטואלי VHD"
+    },
+    {
+      "name": "VMDK Image",
+      "extension": ".vmdk",
+      "header": "4B444D56",
+      "footer": "",
+      "max_size": 4294967296,
+      "footer_search_offset": 0,
+      "description": "תמונת דיסק VMware"
+    },
+    {
+      "name": "Email MSG",
+      "extension": ".msg",
+      "header": "D0CF11E0A1B11AE1",
+      "footer": "",
+      "max_size": 52428800,
+      "footer_search_offset": 0,
+      "description": "הודעת דואר אלקטרוני Outlook"
+    },
+    {
+      "name": "Email EML",
+      "extension": ".eml",
+      "header": "46726F6D3A",
+      "footer": "",
+      "max_size": 52428800,
+      "footer_search_offset": 0,
+      "description": "הודעת דואר אלקטרוני EML"
+    },
+    {
+      "name": "PST Archive",
+      "extension": ".pst",
+      "header": "2142444E",
+      "footer": "",
+      "max_size": 2147483648,
+      "footer_search_offset": 0,
+      "description": "ארכיון Outlook PST"
+    },
+    {
+      "name": "Registry Hive",
+      "extension": ".reg",
+      "header": "72656766",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "קובץ רישום Windows"
+    },
+    {
+      "name": "Event Log",
+      "extension": ".evt",
+      "header": "300000004C664C65",
+      "footer": "",
+      "max_size": 104857600,
+      "footer_search_offset": 0,
+      "description": "יומן אירועים Windows"
+    },
+    {
+      "name": "Prefetch File",
+      "extension": ".pf",
+      "header": "11000000534341434100000000000000",
+      "footer": "",
+      "max_size": 1048576,
+      "footer_search_offset": 0,
+      "description": "קובץ Prefetch של Windows"
+    },
+    {
+      "name": "LNK Shortcut",
+      "extension": ".lnk",
+      "header": "4C00000001140200",
+      "footer": "",
+      "max_size": 1048576,
+      "footer_search_offset": 0,
+      "description": "קיצור דרך Windows"
+    },
+    {
+      "name": "Java Class",
+      "extension": ".class",
+      "header": "CAFEBABE",
+      "footer": "",
+      "max_size": 10485760,
+      "footer_search_offset": 0,
+      "description": "קובץ Java Class"
+    },
+    {
+      "name": "Android APK",
+      "extension": ".apk",
+      "header": "504B030414000600",
+      "footer": "504B0506",
+      "max_size": 1073741824,
+      "footer_search_offset": 8192,
+      "description": "אפליקציית Android"
+    },
+    {
+      "name": "Windows Font",
+      "extension": ".ttf",
+      "header": "0001000000",
+      "footer": "",
+      "max_size": 10485760,
+      "footer_search_offset": 0,
+      "description": "גופן TrueType"
+    },
+    {
+      "name": "OpenType Font",
+      "extension": ".otf",
+      "header": "4F54544F",
+      "footer": "",
+      "max_size": 10485760,
+      "footer_search_offset": 0,
+      "description": "גופן OpenType"
+    },
+    {
+      "name": "Web Font",
+      "extension": ".woff",
+      "header": "774F4646",
+      "footer": "",
+      "max_size": 10485760,
+      "footer_search_offset": 0,
+      "description": "גופן Web"
+    },
+    {
+      "name": "ICO Icon",
+      "extension": ".ico",
+      "header": "00000100",
+      "footer": "",
+      "max_size": 1048576,
+      "footer_search_offset": 0,
+      "description": "אייקון Windows"
+    }
+  ]
+}

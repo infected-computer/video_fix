@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/app_icon.png</file>
+        <file>icons/new_case.png</file>
+        <file>icons/open_case.png</file>
+        <file>icons/settings.png</file>
+        <file>icons/about.png</file>
+        <file>translations/app_he.qm</file>
+    </qresource>
+</RCC>

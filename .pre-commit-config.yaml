@@ -1,0 +1,188 @@
+# PhoenixDRS Pre-commit Configuration
+# תצורת pre-commit hooks עבור PhoenixDRS
+
+repos:
+  # Code formatting with Black
+  - repo: https://github.com/psf/black
+    rev: 22.10.0
+    hooks:
+      - id: black
+        language_version: python3
+        args: [--line-length=88, --target-version=py38]
+
+  # Import sorting with isort
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: [--profile=black, --line-length=88]
+
+  # Linting with flake8
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        args:
+          - --max-line-length=88
+          - --extend-ignore=E203,W503,E501
+          - --max-complexity=10
+        additional_dependencies:
+          - flake8-docstrings
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-simplify
+
+  # Security linting with bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [-r, ., -f, json, -o, bandit-report.json]
+        exclude: ^tests/
+
+  # YAML validation
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.29.0
+    hooks:
+      - id: yamllint
+        args: [-d, relaxed]
+
+  # General pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      # Basic file checks
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=10000']  # 10MB limit
+      
+      # Python-specific checks  
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-docstring-first
+      - id: debug-statements
+      - id: name-tests-test
+        args: [--django]
+      
+      # JSON/YAML checks
+      - id: check-json
+      - id: check-yaml
+      - id: pretty-format-json
+        args: [--autofix, --indent=2]
+      
+      # Security checks
+      - id: detect-private-key
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+
+  # Type checking with mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.0.1
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-all]
+        args: [--ignore-missing-imports, --show-error-codes]
+        exclude: ^tests/
+
+  # Documentation checks
+  - repo: https://github.com/PyCQA/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        args:
+          - --convention=google
+          - --add-ignore=D100,D101,D102,D103,D104,D105,D107
+        exclude: ^tests/
+
+  # Dependency vulnerability scanning
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.2
+    hooks:
+      - id: python-safety-dependencies-check
+        files: requirements.*\.txt$
+
+  # Spell checking (optional - can be slow)
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.4
+    hooks:
+      - id: codespell
+        args: [--skip="*.pyc,*.jpg,*.png,*.gif,*.pdf,*.gz,*.zip,*.7z"]
+        exclude: |
+          (?x)^(
+              .*\.lock|
+              .*\.log|
+              .*/test_data/.*
+          )$
+
+  # Custom PhoenixDRS-specific hooks
+  - repo: local
+    hooks:
+      # Ensure Hebrew text encoding is correct
+      - id: check-hebrew-encoding
+        name: Check Hebrew text encoding
+        entry: python -c "
+import sys
+import codecs
+for file in sys.argv[1:]:
+    try:
+        with codecs.open(file, 'r', 'utf-8') as f:
+            content = f.read()
+            if 'בדיקה' in content or 'תמונה' in content or 'קובץ' in content:
+                print(f'Hebrew text found in {file} - encoding OK')
+    except UnicodeDecodeError:
+        print(f'Encoding error in {file}')
+        sys.exit(1)
+"
+        language: system
+        files: \.(py|md|txt)$
+        exclude: ^tests/test_data/
+
+      # Validate file signatures format
+      - id: validate-signatures-json
+        name: Validate signatures.json format
+        entry: python -c "
+import json
+import sys
+try:
+    with open('signatures.json', 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        if 'signatures' not in data:
+            print('Missing signatures key in signatures.json')
+            sys.exit(1)
+        for sig in data['signatures']:
+            required_fields = ['name', 'extension', 'header', 'max_size']
+            for field in required_fields:
+                if field not in sig:
+                    print(f'Missing {field} in signature: {sig.get(\"name\", \"unknown\")}')
+                    sys.exit(1)
+        print(f'Validated {len(data[\"signatures\"])} file signatures')
+except Exception as e:
+    print(f'Error validating signatures.json: {e}')
+    sys.exit(1)
+"
+        language: system
+        files: signatures\.json$
+
+      # Ensure test coverage requirements
+      - id: check-test-coverage
+        name: Check test coverage requirements
+        entry: python -c "
+import os
+import glob
+py_files = len(glob.glob('*.py'))
+test_files = len(glob.glob('tests/test_*.py'))
+if py_files > 0 and test_files / py_files < 0.8:
+    print(f'Warning: Test coverage may be low. {test_files} test files for {py_files} Python files')
+else:
+    print(f'Test coverage looks good: {test_files} test files for {py_files} Python files')
+"
+        language: system
+        pass_filenames: false
+
+# Global pre-commit configuration
+default_stages: [commit]
+fail_fast: false
+minimum_pre_commit_version: 2.20.0

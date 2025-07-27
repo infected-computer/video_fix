@@ -1,0 +1,55 @@
+# PhoenixDRS - Professional Data Recovery Suite Dependencies
+# מערכת שחזור מידע מקצועית - תלויות
+
+# Core dependencies - תלויות בסיסיות
+psutil>=5.9.0           # System information and monitoring
+tqdm>=4.64.0            # Enhanced progress bars
+loguru>=0.7.0           # Structured logging
+colorama>=0.4.6         # Cross-platform colored terminal output
+
+# File system parsers - פרסרי מערכות קבצים
+pytsk3>=20220302        # The Sleuth Kit bindings (NTFS, EXT4, FAT, etc.)
+# pyfsntfs>=20220814    # Pure Python NTFS parser (alternative)
+# pyapfs>=20220814      # APFS parser
+
+# Performance and concurrency - ביצועים ועיבוד מקבילי
+joblib>=1.2.0           # Parallel processing
+
+
+# Testing framework - מסגרת בדיקות
+pytest>=7.2.0          # Testing framework
+pytest-cov>=4.0.0      # Coverage reporting
+pytest-mock>=3.10.0    # Mocking utilities
+pytest-benchmark>=4.0.0 # Performance benchmarking
+
+# Code quality - איכות קוד
+black>=22.0.0           # Code formatting
+flake8>=6.0.0           # Code linting
+mypy>=1.0.0             # Type checking
+pre-commit>=2.20.0      # Pre-commit hooks
+
+# Documentation - תיעוד
+sphinx>=5.3.0           # Documentation generation
+sphinx-rtd-theme>=1.2.0 # ReadTheDocs theme
+myst-parser>=0.18.0     # Markdown support for Sphinx
+
+# Security and forensics - אבטחה ופורנזיקה
+cryptography>=39.0.0    # Encryption/decryption support
+
+
+# GUI framework - מסגרת ממשק גרפי
+PySide6>=6.7.0           # Professional GUI framework (primary)
+PyQt6>=6.7.0             # Alternative GUI framework
+qtawesome>=1.3.3         # FontAwesome icons for PyQt/PySide
+
+# Optional advanced features - תכונות מתקדמות אופציונליות
+# scikit-learn>=1.2.0   # Machine learning for file classification
+# numpy>=1.24.0         # Numerical computing
+# opencv-python>=4.7.0  # Image processing
+# flask>=2.2.0          # Web API
+# celery>=5.2.0         # Distributed task queue
+
+# Development tools - כלי פיתוח
+setuptools>=65.0.0      # Package building
+wheel>=0.38.0           # Wheel building
+twine>=4.0.0            # Package uploading
