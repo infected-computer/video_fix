@@ -17,6 +17,7 @@ from disk_imager import DiskImager
 from file_carver import FileCarver
 from video_rebuilder import VideoRebuilder
 from validation_reporting import validate_and_report
+from video_repair_engine import VideoRepairEngine
 
 
 def create_image_command(args):
@@ -113,6 +114,36 @@ def rebuild_video_command(args):
         
     except Exception as e:
         print(f"שגיאה בשחזור וידאו: {e}")
+        return 1
+
+
+def repair_video_command(args):
+    """פקודת תיקון וידאו"""
+    print(f"מתחיל תיקון וידאו: {args.input}")
+
+    if not os.path.exists(args.input):
+        print(f"שגיאה: הקובץ {args.input} לא נמצא")
+        return 1
+
+    engine = VideoRepairEngine()
+
+    output = args.output
+    if not output:
+        name, ext = os.path.splitext(args.input)
+        output = f"{name}_repaired{ext}"
+
+    try:
+        result = engine.repair_video(args.input, output, use_ai=args.use_ai)
+        if result.success:
+            print("\nתיקון הושלם בהצלחה!")
+            print(f"הקובץ המתוקן נשמר ב-{output}")
+            return 0
+        print("\nתיקון נכשל")
+        for err in result.errors_found:
+            print(f"- {err}")
+        return 1
+    except Exception as e:
+        print(f"שגיאה בתיקון וידאו: {e}")
         return 1
 
 
@@ -255,6 +286,13 @@ def main():
     video_parser.add_argument('--source', required=True, help='תמונת דיסק')
     video_parser.add_argument('--output', required=True, help='תיקיית פלט')
     video_parser.set_defaults(func=rebuild_video_command)
+
+    # פקודת repair-video
+    repair_parser = subparsers.add_parser('repair-video', help='תיקון קובץ וידאו')
+    repair_parser.add_argument('--input', required=True, help='קובץ וידאו פגום')
+    repair_parser.add_argument('--output', help='קובץ פלט מתוקן')
+    repair_parser.add_argument('--no-ai', dest='use_ai', action='store_false', help='ביטול שימוש ב-AI')
+    repair_parser.set_defaults(func=repair_video_command, use_ai=True)
     
     # פקודת analyze
     analyze_parser = subparsers.add_parser('analyze', help='ניתוח תמונת דיסק')

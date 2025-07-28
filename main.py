@@ -15,6 +15,13 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 try:
     from logic.video_repair_engine import VideoRepairEngine
     from src.python.disk_imager import DiskImager
+    from cli.main import (
+        create_image_command,
+        carve_command,
+        rebuild_video_command,
+        analyze_command,
+        validate_command,
+    )
 except ImportError as e:
     print(f"Warning: Some modules not available: {e}")
 
