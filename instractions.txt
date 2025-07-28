@@ -1,0 +1,246 @@
+You are a senior software architect and an expert developer specializing in video file recovery and repair. Your task is to fully implement, with the highest possible quality and completeness, a state-of-the-art video recovery software named VideoRepair Pro. Carefully read the provided specification document, which thoroughly details the product's vision, technical structure, corruption types, recovery methodologies (including AI-driven solutions), system architecture (hybrid C++/Python design), UX/UI design principles, security and compliance standards, and specific libraries and technologies to be used (such as FFmpeg, OpenCV, Bento4, PyTorch, Qt/QML).
+
+Your implementation must fully satisfy every requirement, design guideline, and strategy detailed in the specification, including:
+
+Technical Excellence:
+
+Full coverage of video formats (consumer and professional RAW formats: MP4, MOV, MKV, MXF, AVI, ProRes, DNxHD, REDCODE, ARRI RAW, etc.).
+
+Implementation of robust detection algorithms to identify and categorize each type of file corruption detailed (header issues, missing moov atoms, offset errors, fragmented data, synchronization problems, etc.).
+
+Application of both classical repair methods (Remuxing, Header reconstruction, Index rebuilding) and advanced AI-based methods (Inpainting GANs, Frame interpolation with RIFE, Super-resolution using Real-ESRGAN, Audio-Video synchronization with SyncNet CNN).
+
+GPU-accelerated pipelines with CUDA/OpenCL support for maximum performance.
+
+Reed-Solomon error correction, Optical Flow estimation, and Spectral analysis.
+
+Architecture Implementation:
+
+Hybrid modular architecture: High-performance C++ core handling I/O, decoding, low-level file operations, GPU acceleration.
+
+Python-based AI modules integrating seamlessly with the C++ core via Pybind11 bindings.
+
+Qt/QML-based intuitive graphical user interface alongside an advanced CLI for batch operations.
+
+Plugin-based extensibility (signed plugins with RSA-2048), offering ABI stability.
+
+UI/UX Implementation:
+
+User-friendly interface following the provided UI guidelines and Design System (color schemes, typography, icons).
+
+Comprehensive accessibility features (keyboard navigation, high contrast modes, ARIA tags).
+
+Localization support for Hebrew, English, Japanese, Spanish.
+
+Security and Compliance:
+
+Secure coding practices compliant with OWASP-ASVS L2.
+
+Detailed logging, crash reporting, observability with Prometheus, Jaeger tracing, and Sentry.
+
+SBOM integration (CycloneDX), privacy compliance (GDPR/CCPA).
+
+Quality Assurance:
+
+Implementation of Unit testing (GTest, pytest) with minimum 90% code coverage.
+
+Integration of fuzz testing (libFuzzer), Chaos testing, and performance benchmarks.
+
+Deliverables and Documentation:
+
+Complete source code clearly structured into modules and submodules (core engine, AI models, GUI, SDK).
+
+Detailed inline documentation and explanatory comments.
+
+Example use cases demonstrating full functionality and capabilities.
+
+Build scripts (CMake, Conan, GitHub Actions) supporting Windows, macOS, and Linux.
+
+Now, carefully read the entire specification document provided below and start generating the complete, fully-functional, production-ready source code for VideoRepair Pro, strictly adhering to all instructions, requirements, and quality standards described.
+Be thorough, systematic, and uncompromising on quality and completeness.
+
+Specification Document:
+---
+
+# המדריך המקיף לבניית **VideoRepair Pro** – התוכנה המתקדמת בעולם לתיקון ושחזור וידאו
+
+**גרסה 1.2 (27-07-2025)**
+*מטרת המסמך: להוות מדריך מלא ומפורט למפתחי התוכנה.*
+
+---
+
+## תוכן העניינים
+
+1. חזון אסטרטגי והגדרת מצוינות
+2. יסודות טכניים וסוגי תקלות
+3. מתודולוגיות תיקון ושחזור
+4. ארכיטקטורה טכנית ויישום
+5. עיצוב – UI/UX ותדמית מוצר
+6. כיוונים עתידיים, חדשנות והמלצות
+7. נספחים
+
+---
+
+## 1. חזון אסטרטגי והגדרת מצוינות
+
+**תקציר מנהלים:**
+פיתוח תוכנה שתאפשר שחזור של כל סוגי קבצי הווידאו הפגומים ברמה הגבוהה ביותר, תוך שילוב מתודולוגיות AI מתקדמות ותמיכה מלאה בפורמטים מקצועיים וצרכניים.
+
+**קריטריוני מצוינות:**
+
+* תמיכה מלאה בכל הפורמטים (MP4, MOV, RAW מקצועי).
+* אחוז שחזור נתונים ≥98% ושלמות נתונים ויזואלית.
+* ביצועים גבוהים עם עיבוד GPU מתקדם.
+* חוויית משתמש יוצאת דופן.
+
+---
+
+## 2. יסודות טכניים וסוגי תקלות
+
+### 2.1 מבנה קובץ וידאו
+
+* קונטיינרים: MP4, MOV, MKV, AVI, MXF, AVCHD.
+* זרמי מדיה: H.264, H.265, ProRes, DNxHD, RAW.
+* מטא-דאטה: Timestamps, Color profiles.
+
+### 2.2 מנגנוני שחיתות עיקריים
+
+* כותרות פגומות (Header corruption).
+* חוסר ב-moov atom.
+* אינדקס פגום או חסר.
+* Desync בין אודיו לווידאו.
+* קבצים מקוטעים.
+
+### 2.3 מטריצת פגיעויות – זיהוי ותיקון
+
+| פגיעה              | זיהוי                   | אסטרטגיה תיקון                    | כלים                      |
+| ------------------ | ----------------------- | --------------------------------- | ------------------------- |
+| Header Corruption  | FFprobe, Hash Signature | שחזור Header מקובץ רפרנס          | Bento4, mp4recover        |
+| Missing moov       | סריקת mdat              | יצירת moov מחדש                   | Untrunc, AI-FPS Estimator |
+| Offset Shift       | בדיקת stco מול mdat     | Remuxing מהיר                     | FFmpeg                    |
+| Partial mdat       | ניתוח Frame drops       | שחזור באמצעות GANs, Interpolation | Real-ESRGAN, RIFE         |
+| Fragment Chaos     | ניתוח סדר moof          | איחוד סגמנטים                     | Bento4                    |
+| A/V Desync         | ניתוח Cross-correlation | סנכרון מחדש (CNN SyncNet)         | FFmpeg, PyTorch           |
+| NAL Break          | סריקת NAL units         | תיקון באמצעות Reed-Solomon        | libavcodec                |
+| אובדן Metadata צבע | בדיקת EXIF/XMP          | שחזור LUT והגדרות                 | OpenColorIO               |
+| Timecode Drift     | PTS→DTS analysis        | יצירת Timecode חדש                | Bento4                    |
+| Fragmented File    | Raw disk scan           | מיזוג בלוקים פזורים               | RawDisk Scanner           |
+
+---
+
+## 3. מתודולוגיות תיקון ושחזור
+
+### 3.1 שיטות קלאסיות
+
+* Remuxing (FFmpeg)
+* בניית אינדקס חדש (Bento4)
+* שחזור כותרת והעתקה מרפרנס (untrunc)
+
+### 3.2 AI-Enhanced Repair
+
+* Video-Inpainting (GANs)
+* אינטרפולציה (RIFE)
+* סופר-רזולוציה (Real-ESRGAN)
+* סנכרון אודיו-וידאו (SyncNet CNN)
+
+### 3.3 אלגוריתמים מתקדמים נוספים
+
+* Reed-Solomon לתיקון NALs
+* Optical Flow estimation
+* Spectral analysis
+
+---
+
+## 4. ארכיטקטורה טכנית ויישום
+
+### 4.1 חלוקת עבודה: C++ ו-Python
+
+| משימה         | C++ (ביצועים) | Python (AI ולוגיקה) |
+| ------------- | ------------- | ------------------- |
+| עיבוד GPU     | ✔️            | ↗️ bindings         |
+| AI ושחזור חכם | ↘️ bindings   | ✔️                  |
+| ממשק משתמש    | ✔️ Qt         | אופציונלי           |
+
+### 4.2 מודולים ושכבות
+
+* ליבת C++: FFmpeg, Bento4.
+* שכבת Python: PyTorch, OpenCV, AI מודלים.
+
+### 4.3 דוגמאות קוד (ראה מסמך קודם לפרטי קוד מדויקים)
+
+### 4.4 ספריות מפתח
+
+| תחום        | ספריות            |
+| ----------- | ----------------- |
+| קריאת קבצים | FFmpeg, PyAV      |
+| עיבוד תמונה | OpenCV            |
+| AI          | PyTorch, TensorRT |
+| האצת חומרה  | CUDA, OpenCL      |
+| UI          | Qt (QML), PyQt    |
+
+---
+
+## 5. עיצוב – UI/UX ותדמית מוצר
+
+### 5.1 עקרונות UX
+
+* מינימליזם ומיקוד במטרה.
+* הצגה מתקדמת של מידע (Progressive Disclosure).
+* עדכון בזמן אמת וחיווי מתקדם.
+
+### 5.2 שפה חזותית
+
+* צבעים ראשיים: כחול (#1E88E5), טורקיז (#00BFA5).
+* פונטים: Inter, Heebo (תמיכה בעברית).
+* איקונוגרפיה אחידה (Material Symbols).
+
+### 5.3 Flow ו-Micro-interactions
+
+* Drag-and-drop דינמי.
+* Tooltip אינטראקטיבי.
+* Animated Timeline Diff.
+* הודעות Toast לניהול תהליכים.
+
+### 5.4 נגישות ולוקליזציה
+
+* תמיכה מלאה בנגישות (Contrast, Keyboard Navigation, ARIA).
+* לוקליזציה אוטומטית: עברית, אנגלית, ספרדית, יפנית.
+
+### 5.5 Brand Identity
+
+* לוגו: גל דיגיטלי, ללא טקסט.
+* סיסמה: "Recover every frame."
+* עיצוב שמדגיש אמינות ומודרניות.
+
+---
+
+## 6. כיוונים עתידיים, חדשנות והמלצות
+
+* עיבוד בענן (Cloud GPU).
+* שקיפות ואתיקה בשימוש AI.
+* חדשנות מתמשכת במחקר סוגי פגיעות.
+
+---
+
+## 7. נספחים
+
+* נספח A – JSON אילן-אטומים.
+* נספח B – UML Sequence.
+* נספח C – Benchmark Matrix.
+* נספח D – Design System PDF.
+
+---
+
+## סיכום והנחיות למפתחים
+
+1. להתמקד בשילוב יעיל בין C++ ו-Python.
+2. להקפיד על ביצועים מקסימליים וניהול זיכרון אופטימלי.
+3. להעניק תשומת לב מיוחדת ליכולות AI מתקדמות.
+4. להשקיע ב-UX, נגישות ועיצוב המוצר, התואמים את ערכי המותג.
+5. לבצע בדיקות יסודיות, כולל Unit, Fuzz ו-Chaos tests.
+
+המסמך מיועד להוביל את הפיתוח של VideoRepair Pro להיות התוכנה המתקדמת מסוגה בעולם, המניבה הכנסות משמעותיות ומספקת ערך חסר תקדים למשתמשים.
+
+---
+
+**סיום מסמך – גרסה סופית להגשה לפיתוח**

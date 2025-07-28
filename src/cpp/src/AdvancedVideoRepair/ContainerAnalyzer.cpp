@@ -466,7 +466,28 @@ MediaAnalysisResult ContainerAnalyzer::analyze_media_data(const MP4Box& mdat_box
         }
     }
     
-    // TODO: Add similar analysis for other codecs and audio
+    // Analysis for additional codecs
+    if (codec_type == "avc1" || codec_type == "h264") {
+        // H.264 analysis already implemented above
+    } else if (codec_type == "hev1" || codec_type == "hvc1") {
+        // H.265/HEVC analysis
+        analyzeHEVCNALUnits(sample_data, result);
+    } else if (codec_type == "av01") {
+        // AV1 analysis
+        analyzeAV1OBUs(sample_data, result);
+    } else if (codec_type.find("prores") != std::string::npos) {
+        // ProRes analysis
+        analyzeProResFrames(sample_data, result);
+    }
+    
+    // Audio codec analysis
+    if (is_audio_track) {
+        if (codec_type == "mp4a") {
+            analyzeAACFrames(sample_data, result);
+        } else if (codec_type == "lpcm") {
+            analyzePCMAudio(sample_data, result);
+        }
+    }
     
     return result;
 }

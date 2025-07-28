@@ -1,0 +1,119 @@
+# PhoenixDRS Professional - Development Dependencies
+# תלויות פיתוח לPhoenixDRS Professional
+
+# Include production requirements
+-r requirements.txt
+
+# Enhanced development tools
+ipython>=8.15.0          # Enhanced interactive Python shell
+jupyter>=1.0.0           # Jupyter notebook for prototyping
+notebook>=7.0.0          # Jupyter notebook server
+
+# Advanced testing tools
+pytest-xdist>=3.3.0     # Parallel test execution
+pytest-timeout>=2.1.0   # Test timeout handling
+pytest-randomly>=3.12.0 # Random test order
+pytest-sugar>=0.9.7     # Better test output
+pytest-html>=3.2.0      # HTML test reports
+pytest-json-report>=1.5.0 # JSON test reports
+
+# Performance and profiling
+py-spy>=0.3.14           # Production profiler
+pytest-profiling>=1.7.0 # Test profiling
+scalene>=1.5.0           # High-performance profiler
+
+# Code quality and security
+bandit>=1.7.5            # Security linting
+safety>=2.3.0            # Dependency vulnerability checking
+vulture>=2.9.0           # Dead code detection
+radon>=6.0.0             # Code complexity analysis
+xenon>=0.9.0             # Code complexity monitoring
+
+# Documentation development
+sphinx-autobuild>=2021.3.14  # Auto-rebuilding docs
+sphinx-book-theme>=1.0.0     # Modern book theme
+sphinxcontrib-mermaid>=0.9.2 # Mermaid diagrams
+sphinxcontrib-plantuml>=0.25 # PlantUML diagrams
+
+# Development utilities
+python-dotenv>=1.0.0     # Environment variable management
+watchdog>=3.0.0          # File system monitoring
+rich>=13.5.0             # Rich text and beautiful formatting
+typer>=0.9.0             # CLI framework for dev tools
+click>=8.1.0             # Command line interface creation
+
+# Database development
+alembic>=1.12.0          # Database migrations
+sqlalchemy-utils>=0.41.0 # SQLAlchemy utilities
+
+# API development and testing
+httpx>=0.24.0            # Modern HTTP client
+fastapi>=0.103.0         # Modern web framework
+uvicorn>=0.23.0          # ASGI server
+starlette>=0.27.0        # Lightweight ASGI framework
+
+# Debugging and monitoring
+pdb++>=0.10.3            # Enhanced debugger
+icecream>=2.1.3          # Debug print replacement
+snoop>=0.4.3             # Advanced debugging
+
+# Git hooks and pre-commit
+pre-commit>=3.4.0        # Pre-commit hooks framework
+
+# Build and packaging tools
+build>=0.10.0            # Modern Python build tool
+flit>=3.9.0              # Simple packaging tool
+poetry>=1.6.0            # Dependency management and packaging
+pipenv>=2023.9.8         # Dependency management
+
+# Type checking enhancements
+mypy-extensions>=1.0.0   # MyPy extensions
+types-requests>=2.31.0   # Type stubs for requests
+types-PyYAML>=6.0.0      # Type stubs for PyYAML
+types-pillow>=10.0.0     # Type stubs for Pillow
+
+# Development server tools
+flask-cors>=4.0.0        # CORS support for Flask development
+flask-socketio>=5.3.0    # WebSocket support for Flask
+
+# Data analysis and visualization (for performance analysis)
+pandas>=2.1.0            # Data analysis
+matplotlib>=3.7.0        # Plotting
+seaborn>=0.12.0          # Statistical visualization
+plotly>=5.17.0           # Interactive plots
+
+# Machine learning development
+tensorboard>=2.14.0      # TensorBoard for model visualization
+wandb>=0.15.0            # Weights & Biases for experiment tracking
+mlflow>=2.7.0            # ML lifecycle management
+
+# Container development
+docker>=6.1.0            # Docker Python API
+docker-compose>=1.29.0   # Docker Compose
+
+# Cloud development
+boto3>=1.28.0            # AWS SDK
+azure-storage-blob>=12.18.0  # Azure Blob Storage
+google-cloud-storage>=2.10.0 # Google Cloud Storage
+
+# Development configuration
+python-decouple>=3.8     # Configuration management
+pydantic-settings>=2.0.0 # Settings management with Pydantic
+
+# Advanced logging
+structlog>=23.1.0        # Structured logging
+colorlog>=6.7.0          # Colored logging output
+
+# Memory debugging
+pympler>=0.9             # Memory profiling
+tracemalloc>=1.0         # Memory tracing (built-in but good to note)
+
+# Async development
+asyncio-mqtt>=0.13.0     # MQTT async client
+aioredis>=2.0.0          # Async Redis client
+aiohttp>=3.8.0           # Async HTTP client/server
+
+# Development environment
+python-lsp-server>=1.8.0 # Language Server Protocol implementation
+autopep8>=2.0.0          # Code formatting
+rope>=1.9.0              # Python refactoring library

@@ -6,9 +6,34 @@ PhoenixDRS Test Configuration and Fixtures
 import pytest
 import tempfile
 import os
+import sys
+import asyncio
+import logging
 from pathlib import Path
-from typing import Generator
+from typing import Generator, Dict, Any
 import json
+
+# Add src directory to Python path
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+# Configure logging for tests
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# Disable verbose logging from external libraries during tests
+logging.getLogger('transformers').setLevel(logging.WARNING)
+logging.getLogger('torch').setLevel(logging.WARNING)
+logging.getLogger('PIL').setLevel(logging.WARNING)
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create an instance of the default event loop for the test session."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest.fixture
@@ -16,6 +41,17 @@ def temp_dir() -> Generator[Path, None, None]:
     """יצירת תיקייה זמנית עבור בדיקות"""
     with tempfile.TemporaryDirectory() as temp_path:
         yield Path(temp_path)
+
+
+@pytest.fixture
+def temp_directory() -> Generator[Path, None, None]:
+    """Alternative name for temp_dir to match integration tests"""
+    temp_dir = Path(tempfile.mkdtemp(prefix="phoenixdrs_test_"))
+    try:
+        yield temp_dir
+    finally:
+        import shutil
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -163,6 +199,90 @@ class TestDataFactory:
 def test_factory():
     """גישה ל-TestDataFactory"""
     return TestDataFactory
+
+
+# Video test fixtures for integration tests
+@pytest.fixture
+def sample_video_files(temp_directory: Path) -> Dict[str, Path]:
+    """Create sample video files for testing."""
+    files = {}
+    
+    # Create MP4 file with basic structure
+    mp4_content = (
+        b"\x00\x00\x00\x20ftypisom\x00\x00\x02\x00isomiso2avc1mp41"  # ftyp box
+        b"\x00\x00\x00\x08free"  # free box
+        b"\x00\x00\x01\x00mdat"  # mdat box start
+        + b"\x00" * 200  # dummy video data
+    )
+    
+    mp4_path = temp_directory / "sample.mp4"
+    mp4_path.write_bytes(mp4_content)
+    files["mp4"] = mp4_path
+    
+    return files
+
+
+@pytest.fixture
+def corrupted_video_files(temp_directory: Path) -> Dict[str, Path]:
+    """Create corrupted video files for testing repair functionality."""
+    files = {}
+    
+    # Corrupted header
+    corrupted_header = (
+        b"\xFF\xFF\xFF\xFFftypisom\x00\x00\x02\x00isomiso2avc1mp41"  # corrupted ftyp
+        b"\x00\x00\x00\x08free"
+        b"\x00\x00\x01\x00mdat"
+        + b"\x00" * 200
+    )
+    
+    header_corrupted = temp_directory / "header_corrupted.mp4"
+    header_corrupted.write_bytes(corrupted_header)
+    files["header_corrupted"] = header_corrupted
+    
+    return files
+
+
+@pytest.fixture
+def repair_config_basic():
+    """Basic repair configuration for testing."""
+    try:
+        from python.video_repair_orchestrator import RepairConfiguration, RepairTechnique
+        
+        return RepairConfiguration(
+            use_gpu=False,
+            enable_ai_processing=False,
+            max_cpu_threads=2,
+            techniques=[RepairTechnique.HEADER_RECONSTRUCTION, RepairTechnique.INDEX_REBUILD],
+            quality_factor=0.8
+        )
+    except ImportError:
+        # Return mock config if module not available
+        return {
+            "use_gpu": False,
+            "enable_ai_processing": False,
+            "max_cpu_threads": 2,
+            "quality_factor": 0.8
+        }
+
+
+# Test markers
+def pytest_configure(config):
+    """Configure custom pytest markers."""
+    config.addinivalue_line(
+        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    )
+    config.addinivalue_line(
+        "markers", "gpu: marks tests as requiring GPU"
+    )
+    config.addinivalue_line(
+        "markers", "ai: marks tests as requiring AI models"
+    )
+    config.addinivalue_line(
+        "markers", "integration: marks tests as integration tests"
+    )
+    config.addinivalue_line(
+        "markers", "benchmark: marks tests as performance benchmarks"
+    )
 
 
 # Custom markers for better test organization
