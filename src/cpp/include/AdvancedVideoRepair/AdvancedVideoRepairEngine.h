@@ -36,6 +36,12 @@ extern "C" {
 #include <opencv2/cudafeatures2d.hpp>
 #endif
 
+// RAII wrappers for FFmpeg
+#include "FFmpegUtils.h"
+
+// Thread-safe utilities
+#include "ThreadSafeFrameBuffer.h"
+
 /**
  * @brief Advanced Video Repair Engine
  * 
@@ -224,11 +230,11 @@ private:
     std::unique_ptr<MotionEstimator> m_motion_estimator;
     std::unique_ptr<TemporalInterpolator> m_temporal_interpolator;
     
-    // FFmpeg contexts
-    AVFormatContext* m_input_format_ctx = nullptr;
-    AVFormatContext* m_output_format_ctx = nullptr;
-    std::vector<AVCodecContext*> m_decoder_contexts;
-    std::vector<AVCodecContext*> m_encoder_contexts;
+    // FFmpeg contexts using RAII wrappers
+    VideoRepair::AVFormatContextPtr m_input_format_ctx;
+    VideoRepair::AVFormatContextPtr m_output_format_ctx;
+    std::vector<VideoRepair::AVCodecContextPtr> m_decoder_contexts;
+    std::vector<VideoRepair::AVCodecContextPtr> m_encoder_contexts;
     
     // State management
     bool m_initialized = false;
@@ -264,6 +270,13 @@ private:
     void log_message(const std::string& message, int level = 2);
     
     void cleanup_contexts();
+    
+    // Internal analysis methods
+    bool validate_file_header(const std::string& file_path);
+    bool check_stream_integrity(const std::string& file_path, CorruptionAnalysis& analysis);
+    double calculate_corruption_percentage(const CorruptionAnalysis& analysis);
+    bool determine_repairability(const CorruptionAnalysis& analysis);
+    std::string generate_analysis_report(const CorruptionAnalysis& analysis);
 };
 
 /**
@@ -362,16 +375,36 @@ public:
         const RepairStrategy& strategy
     );
     
+    // New thread-safe version using ThreadSafeFrameBuffer
+    bool reconstruct_missing_frame_safe(
+        const VideoRepair::ThreadSafeFrameBuffer& frame_buffer,
+        cv::Mat& output_frame,
+        int target_frame_number,
+        const RepairStrategy& strategy
+    );
+    
     bool repair_corrupted_regions(
         cv::Mat& frame,
         const cv::Mat& corruption_mask,
         const std::vector<cv::Mat>& reference_frames,
         const RepairStrategy& strategy
     );
+    
+    // New thread-safe version for corrupted regions
+    bool repair_corrupted_regions_safe(
+        cv::Mat& frame,
+        const cv::Mat& corruption_mask,
+        const VideoRepair::ThreadSafeFrameBuffer& frame_buffer,
+        const RepairStrategy& strategy
+    );
 
 private:
     AdvancedVideoRepairEngine* m_engine;
     std::unique_ptr<MotionEstimator> m_motion_estimator;
+    
+    // Thread-safe frame buffer for concurrent operations
+    mutable std::mutex reconstruction_mutex_;
+    std::atomic<size_t> active_reconstructions_{0};
     
     bool perform_temporal_interpolation(
         const cv::Mat& prev_frame,
@@ -389,6 +422,28 @@ private:
         const cv::Mat& reference_frame,
         cv::Mat& target_frame,
         const std::vector<cv::Point2f>& motion_vectors
+    );
+    
+    // Additional interpolation methods
+    bool perform_optical_flow_interpolation(
+        const cv::Mat& prev_frame,
+        const cv::Mat& next_frame,
+        cv::Mat& interpolated_frame,
+        double temporal_position
+    );
+    
+    bool perform_feature_based_interpolation(
+        const cv::Mat& prev_frame,
+        const cv::Mat& next_frame,
+        cv::Mat& interpolated_frame,
+        double temporal_position
+    );
+    
+    cv::Mat blend_reconstruction_results(
+        const cv::Mat& result1,
+        const cv::Mat& result2,
+        double weight1,
+        double weight2
     );
 };
 

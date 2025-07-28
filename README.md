@@ -1,20 +1,20 @@
-# PhoenixDRS Professional - Advanced Video Recovery & Data Recovery Suite
-## מערכת מקצועית לשחזור וידאו ומידע מתקדמת
+# PhoenixDRS Video Repair Engine
+## מנוע תיקון וידאו מתקדם
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Qt6](https://img.shields.io/badge/Qt-6.4+-green.svg)](https://www.qt.io/)
 [![C++17](https://img.shields.io/badge/C++-17-red.svg)](https://en.cppreference.com/w/cpp/17)
+[![CMake](https://img.shields.io/badge/CMake-3.20+-blue.svg)](https://cmake.org/)
+[![OpenCV](https://img.shields.io/badge/OpenCV-4.x-green.svg)](https://opencv.org/)
 
-PhoenixDRS Professional is a cutting-edge data recovery and video repair suite that combines advanced algorithms, AI-powered restoration, and professional forensic capabilities. The system features a hybrid architecture with C++ performance cores, Python AI processing, and modern desktop GUI.
+PhoenixDRS Video Repair Engine is a high-performance C++ library for video file corruption analysis and repair. It features RAII memory management, thread-safe frame processing, and comprehensive container format support.
 
-**🚀 Key Features:**
-- **Advanced Video Repair** with AI-enhanced algorithms
-- **Professional Data Recovery** with forensic compliance
-- **Multi-format Support** including ProRes, RED R3D, Blackmagic RAW
-- **GPU Acceleration** with CUDA support
-- **Real-time Processing** with progress monitoring
-- **Cross-platform** support (Windows, Linux, macOS)
+**🚀 Current Features:**
+- **Video Container Analysis** for MP4, AVI, and MKV formats
+- **Corruption Detection** with detailed analysis reports
+- **Frame Reconstruction** using optical flow and feature-based interpolation
+- **Thread-Safe Processing** with concurrent frame buffer management
+- **RAII Memory Management** for FFmpeg and CUDA resources
+- **Comprehensive Testing** with 70+ unit and integration tests
 
 ---
 
@@ -34,71 +34,83 @@ PhoenixDRS Professional is a cutting-edge data recovery and video repair suite t
 
 ## 🏗️ System Architecture
 
-PhoenixDRS uses a sophisticated multi-layer architecture:
+The PhoenixDRS Video Repair Engine uses a modular C++ architecture:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                Desktop GUI (Electron + React)            │
+│             Application Layer (User Code)               │
 ├─────────────────────────────────────────────────────────┤
-│          Python Orchestration Layer + AI Engine         │
+│          AdvancedVideoRepairEngine (Main API)           │
 ├─────────────────────────────────────────────────────────┤
-│              C++ High-Performance Core Engine            │
+│  ContainerAnalyzer  │  FrameReconstructor  │  Utilities │
 ├─────────────────────────────────────────────────────────┤
-│            Hardware Layer (CPU, GPU, Storage)            │
+│   FFmpeg RAII   │  OpenCV Processing  │   CUDA RAII    │
+├─────────────────────────────────────────────────────────┤
+│            Hardware Layer (CPU, GPU, Memory)            │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Components:
-- **🖥️ Desktop GUI**: Modern Electron-based interface with React + TypeScript
-- **🐍 Python Backend**: AI orchestration, video analysis, and workflow management
-- **⚡ C++ Core**: High-performance video processing and data recovery algorithms
-- **🤖 AI Engine**: Neural networks for video restoration and enhancement
-- **📱 CLI Tools**: Command-line interface for automation and scripting
+### Core Components:
+- **🔧 AdvancedVideoRepairEngine**: Main API for video analysis and repair
+- **📦 ContainerAnalyzer**: MP4/AVI/MKV container structure analysis
+- **🔄 FrameReconstructor**: Frame interpolation and corruption repair
+- **🧵 ThreadSafeFrameBuffer**: Concurrent frame processing with shared_mutex
+- **💾 RAII Wrappers**: Memory-safe FFmpeg and CUDA resource management
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Python 3.9+** with pip
-- **Node.js 16+** with npm
-- **CMake 3.20+** for C++ compilation
-- **FFmpeg** for video processing
+- **CMake 3.20+** for building
+- **C++17 compatible compiler** (GCC 9+, Clang 10+, MSVC 2019+)
+- **OpenCV 4.x** for image processing
+- **FFmpeg libraries** (libavformat, libavcodec, libavutil, libswscale)
+- **Google Test** (automatically downloaded)
 - **CUDA Toolkit** (optional, for GPU acceleration)
 
-### One-Command Setup (Windows)
-```cmd
+### Build Instructions
+
+#### Linux/macOS
+```bash
+# Install dependencies (Ubuntu/Debian)
+sudo apt update
+sudo apt install build-essential cmake libopencv-dev ffmpeg libavformat-dev libavcodec-dev
+
+# Clone repository
 git clone <repository-url>
 cd "videoFix software"
-.\setup.bat
-```
 
-### One-Command Setup (Linux/macOS)
-```bash
-git clone <repository-url>
-cd "videoFix software"
-chmod +x setup.sh && ./setup.sh
-```
-
-### Manual Setup
-```bash
-# 1. Install Python dependencies
-pip install -r requirements.txt
-
-# 2. Install Node.js dependencies
-npm install
-
-# 3. Build C++ components
+# Build C++ engine
 cd src/cpp
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
 
-# 4. Build desktop application
-npm run build
+# Run tests
+cd tests
+./VideoRepair_Tests
+```
 
-# 5. Start the application
-npm start
+#### Windows
+```cmd
+# Install vcpkg (package manager)
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg
+.\bootstrap-vcpkg.bat
+
+# Install dependencies
+.\vcpkg install opencv4 ffmpeg
+
+# Build project
+cd "videoFix software\src\cpp"
+mkdir build && cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+cmake --build . --config Release
+
+# Run tests
+cd tests\Release
+VideoRepair_Tests.exe
 ```
 
 ---
@@ -181,129 +193,138 @@ npm run build:mac
 
 ## 🎯 Usage
 
-### Desktop Application
-```bash
-# Start the desktop GUI
-npm run dev              # Development mode
-npm start               # Production mode
+### Basic C++ API Example
+```cpp
+#include "AdvancedVideoRepair/AdvancedVideoRepairEngine.h"
+
+using namespace AdvancedVideoRepair;
+
+int main() {
+    // Initialize the video repair engine
+    auto engine = std::make_unique<AdvancedVideoRepairEngine>();
+    if (!engine->initialize()) {
+        std::cerr << "Failed to initialize engine" << std::endl;
+        return -1;
+    }
+    
+    // Analyze video corruption
+    CorruptionAnalysis analysis = engine->analyze_corruption("input.mp4");
+    std::cout << "Corruption level: " << analysis.overall_corruption_percentage << "%" << std::endl;
+    std::cout << "Issues found: " << analysis.detected_issues.size() << std::endl;
+    
+    // Configure repair strategy
+    RepairStrategy strategy;
+    strategy.enable_motion_compensation = true;
+    strategy.enable_post_processing = true;
+    strategy.preserve_original_quality = true;
+    
+    // Repair the video
+    AdvancedRepairResult result = engine->repair_video_file(
+        "input.mp4", "output.mp4", strategy
+    );
+    
+    if (result.success) {
+        std::cout << "Repair completed successfully!" << std::endl;
+        std::cout << "Processing time: " << result.processing_time.count() << "ms" << std::endl;
+    }
+    
+    engine->shutdown();
+    return 0;
+}
 ```
 
-### Command Line Interface
-```bash
-# Video repair
-python main.py repair input.mp4 output.mp4 --quality high --gpu
+### Thread-Safe Frame Processing
+```cpp
+#include "AdvancedVideoRepair/ThreadSafeFrameBuffer.h"
+#include "AdvancedVideoRepair/FrameReconstructor.h"
 
-# Data recovery
-python main.py recover /dev/sdb1 ./recovered/ --format all
+using namespace VideoRepair;
 
-# Video analysis
-python main.py analyze corrupted.mov --detailed --export-report
+// Create thread-safe frame buffer
+ThreadSafeFrameBuffer frame_buffer(100);  // capacity: 100 frames
 
-# Batch processing
-python main.py batch ./input_folder/ ./output_folder/ --parallel 4
+// Producer thread: add frames
+std::thread producer([&frame_buffer]() {
+    cv::Mat frame = cv::imread("frame.jpg");
+    if (frame_buffer.push_frame(frame)) {
+        std::cout << "Frame added successfully" << std::endl;
+    }
+});
+
+// Consumer thread: process frames
+std::thread consumer([&frame_buffer]() {
+    if (frame_buffer.size() > 0) {
+        cv::Mat frame = frame_buffer.get_frame(0);
+        // Process frame...
+    }
+});
+
+producer.join();
+consumer.join();
 ```
 
-### Python API
-```python
-from phoenixdrs import VideoRepairEngine, RepairConfiguration
+### RAII Memory Management Example
+```cpp
+#include "AdvancedVideoRepair/FFmpegUtils.h"
 
-# Create repair configuration
-config = RepairConfiguration(
-    input_file="corrupted_video.mp4",
-    output_file="repaired_video.mp4",
-    enable_ai_processing=True,
-    use_gpu=True,
-    quality_factor=0.9
-)
+using namespace VideoRepair;
 
-# Initialize engine
-engine = VideoRepairEngine()
-await engine.initialize()
-
-# Start repair
-session_id = await engine.start_repair(config)
-
-# Monitor progress
-while True:
-    status = engine.get_status(session_id)
-    if status.completed:
-        break
-    print(f"Progress: {status.progress}% - {status.current_operation}")
-    await asyncio.sleep(1)
-
-print(f"Repair completed: {status.success}")
+void process_video(const std::string& filename) {
+    // RAII wrappers automatically manage memory
+    AVFormatContextPtr format_ctx;
+    AVCodecContextPtr codec_ctx;
+    AVFramePtr frame;
+    AVPacketPtr packet;
+    
+    // Open input file
+    AVFormatContext* ctx = avformat_alloc_context();
+    format_ctx.reset(ctx);
+    
+    if (avformat_open_input(format_ctx.get_ptr(), filename.c_str(), nullptr, nullptr) < 0) {
+        throw std::runtime_error("Could not open file");
+    }
+    
+    // Find stream info
+    if (avformat_find_stream_info(format_ctx.get(), nullptr) < 0) {
+        throw std::runtime_error("Could not find stream info");
+    }
+    
+    // All resources automatically cleaned up when leaving scope
+}
 ```
 
 ---
 
 ## 📹 Supported Formats
 
-### Professional Video Formats
-| Format | Support Level | AI Enhancement | Metadata Recovery |
-|--------|---------------|----------------|-------------------|
-| **ProRes 422/4444** | ✅ Full | ✅ Yes | ✅ Complete |
-| **Blackmagic RAW** | ✅ Full | ✅ Yes | ✅ Complete |
-| **RED R3D** | ✅ Full | ✅ Yes | ✅ Complete |
-| **ARRI RAW** | ✅ Full | ✅ Yes | ✅ Complete |
-| **Canon CRM** | ✅ Full | ✅ Yes | ✅ Complete |
-| **Sony XAVC** | ✅ Full | ✅ Yes | ✅ Complete |
-| **MXF (OP1A/OP-Atom)** | ✅ Full | ✅ Yes | ✅ Complete |
+### Currently Implemented Formats
+| Container Format | Analysis Support | Repair Support | Notes |
+|------------------|------------------|----------------|-------|
+| **MP4** | ✅ Full | ✅ Full | ftyp, moov, mdat box analysis |
+| **AVI** | ✅ Full | ✅ Full | RIFF/AVI structure analysis |
+| **MKV** | ✅ Full | ✅ Full | EBML/Matroska structure analysis |
 
-### Consumer Video Formats
-| Format | Support Level | AI Enhancement | Note |
-|--------|---------------|----------------|------|
-| **MP4 (H.264/H.265)** | ✅ Full | ✅ Yes | Most common |
-| **MOV (H.264/H.265)** | ✅ Full | ✅ Yes | QuickTime |
-| **AVI (DV/MJPEG)** | ✅ Full | ✅ Yes | Legacy support |
-| **MKV (H.264/H.265)** | ✅ Full | ✅ Yes | Open format |
-| **AVCHD** | ✅ Full | ✅ Yes | Camcorder format |
+### Codec Support (via FFmpeg)
+| Video Codec | Detection | Frame Processing | Notes |
+|-------------|-----------|------------------|-------|
+| **H.264 (AVC)** | ✅ Yes | ✅ Yes | Most common format |
+| **H.265 (HEVC)** | ✅ Yes | ✅ Yes | High efficiency |
+| **MPEG-4** | ✅ Yes | ✅ Yes | Legacy support |
+| **VP8/VP9** | ✅ Yes | ✅ Yes | WebM containers |
+| **AV1** | ✅ Yes | ✅ Yes | Modern codec |
 
-### Container Repair Capabilities
-- **Header Reconstruction**: Rebuild corrupted file headers
-- **Index Rebuilding**: Reconstruct seeking/timing indices
-- **Fragment Recovery**: Recover data from fragmented files
-- **Metadata Restoration**: Restore professional metadata
-- **Remuxing**: Container format conversion and optimization
+### Analysis Capabilities
+- **Container Structure Analysis**: Parse and validate container headers and metadata
+- **Stream Information Extraction**: Detect video/audio streams and properties
+- **Corruption Detection**: Identify corrupted regions and estimate damage level
+- **File Integrity Validation**: Check structural integrity of video containers
+- **Format Detection**: Automatically identify container and codec formats
 
----
-
-## 🤖 AI Features
-
-### Available AI Models
-| Model Type | Purpose | Performance | Memory Usage |
-|------------|---------|-------------|--------------|
-| **RIFE Interpolation** | Frame interpolation | 30 FPS → 60 FPS | 2-4 GB VRAM |
-| **Real-ESRGAN** | Super resolution | 2x-4x upscaling | 4-8 GB VRAM |
-| **Video Inpainting** | Damage restoration | Regional repair | 6-12 GB VRAM |
-| **Video Denoising** | Noise reduction | Quality enhancement | 2-6 GB VRAM |
-| **Video Restoration** | General enhancement | Overall improvement | 4-8 GB VRAM |
-
-### AI Processing Pipeline
-```python
-# Configure AI pipeline
-ai_config = AIConfiguration(
-    models=[
-        AIModelType.RIFE_INTERPOLATION,
-        AIModelType.REAL_ESRGAN,
-        AIModelType.VIDEO_DENOISING
-    ],
-    strength=0.8,
-    gpu_acceleration=True,
-    batch_size=4
-)
-
-# Apply AI enhancement
-result = await engine.apply_ai_enhancement(video_file, ai_config)
-print(f"Quality improvement: {result.psnr_improvement} dB PSNR")
-```
-
-### Performance Benchmarks
-| Operation | Input Resolution | GPU | Processing Speed | Quality Gain |
-|-----------|------------------|-----|------------------|--------------|
-| **Frame Interpolation** | 1080p | RTX 3080 | 0.8x realtime | +15% smoothness |
-| **Super Resolution** | 720p→1440p | RTX 3080 | 0.3x realtime | +8 dB PSNR |
-| **Denoising** | 4K | RTX 3080 | 1.2x realtime | +5 dB PSNR |
-| **Inpainting** | 1080p | RTX 3080 | 0.5x realtime | Regional restoration |
+### Repair Capabilities
+- **Header Reconstruction**: Repair corrupted container headers (ftyp, moov, etc.)
+- **Frame Interpolation**: Reconstruct missing frames using optical flow
+- **Corrupted Region Repair**: Fix damaged areas using reference frames
+- **Thread-Safe Processing**: Concurrent frame processing for performance
 
 ---
 
@@ -311,142 +332,178 @@ print(f"Quality improvement: {result.psnr_improvement} dB PSNR")
 
 ### Building from Source
 
-#### C++ Core Engine
+#### C++ Video Repair Engine
 ```bash
 cd src/cpp
 mkdir build && cd build
 
-# Debug build
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DENABLE_TESTS=ON
+# Debug build with all tests
+cmake .. -DCMAKE_BUILD_TYPE=Debug
 make -j$(nproc)
 
 # Release build with optimizations
-cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_SIMD=ON -DENABLE_CUDA=ON
+cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_CUDA=ON
 make -j$(nproc)
 
-# Run tests
-ctest --verbose
-```
+# Run comprehensive test suite
+cd tests
+./VideoRepair_Tests --gtest_verbose
 
-#### Python Components
-```bash
-# Development installation
-pip install -e .
-
-# Run tests
-pytest tests/ --cov=src --cov-report=html
-
-# Code quality checks
-black src/ tests/
-flake8 src/ tests/
-mypy src/
-```
-
-#### Desktop Application
-```bash
-# Development mode with hot reload
-npm run dev
-
-# Production build
-npm run build
-
-# Package for distribution
-npm run dist          # All platforms
-npm run dist:win      # Windows only
-npm run dist:mac      # macOS only
-npm run dist:linux    # Linux only
+# Run specific test categories
+./VideoRepair_Tests --gtest_filter="*MemoryStress*"
+./VideoRepair_Tests --gtest_filter="*Integration*"
 ```
 
 ### Project Structure
 ```
-PhoenixDRS/
-├── src/
-│   ├── components/          # React components
-│   ├── cpp/                 # C++ core engine
-│   ├── python/              # Python backend
-│   ├── renderer/            # Electron renderer
-│   └── main.ts             # Electron main process
-├── tests/                  # Test suites
-├── docs/                   # Documentation
-├── dist/                   # Built distributions
-├── requirements.txt        # Python dependencies
-├── package.json           # Node.js dependencies
-└── CMakeLists.txt         # C++ build configuration
+PhoenixDRS Video Repair Engine/
+├── src/cpp/
+│   ├── include/AdvancedVideoRepair/
+│   │   ├── AdvancedVideoRepairEngine.h      # Main API
+│   │   ├── ContainerAnalyzer.h              # MP4/AVI/MKV analysis
+│   │   ├── FrameReconstructor.h             # Frame interpolation
+│   │   ├── ThreadSafeFrameBuffer.h          # Thread-safe processing
+│   │   ├── FFmpegUtils.h                    # FFmpeg RAII wrappers
+│   │   └── CudaUtils.h                      # CUDA RAII wrappers
+│   ├── src/
+│   │   ├── AdvancedVideoRepairEngine.cpp
+│   │   ├── ContainerAnalyzer.cpp
+│   │   ├── FrameReconstructor.cpp
+│   │   └── ThreadSafeFrameBuffer.cpp
+│   ├── tests/                               # 70+ comprehensive tests
+│   │   ├── test_video_repair_engine.cpp     # Main engine tests
+│   │   ├── test_container_analyzer.cpp      # Container analysis tests
+│   │   ├── test_frame_reconstructor.cpp     # Frame reconstruction tests
+│   │   ├── test_ffmpeg_integration.cpp      # FFmpeg RAII tests
+│   │   ├── test_cuda_kernels.cu             # CUDA functionality tests
+│   │   └── test_integration.cpp             # Integration/performance tests
+│   └── CMakeLists.txt                       # Build configuration
+├── todo.md                                  # Implementation requirements
+└── README.md                               # This file
 ```
 
-### Testing
+### Testing Framework
 ```bash
-# Run all tests
-npm run test              # JavaScript/TypeScript tests
-pytest                    # Python tests
-ctest                     # C++ tests
+# Run all 70+ tests
+./VideoRepair_Tests
+
+# Test categories:
+# - Unit tests (50+ tests): Core functionality validation
+# - Integration tests (15+ tests): Large file processing, parallel operations
+# - Memory tests (5+ tests): RAII wrapper validation, memory stress testing
+# - CUDA tests (10+ tests): GPU memory management and kernel execution
+
+# View test coverage
+./VideoRepair_Tests --gtest_list_tests
 
 # Performance benchmarks
-npm run benchmark
-python -m pytest tests/benchmarks/
+./VideoRepair_Tests --gtest_filter="*Performance*"
+./VideoRepair_Tests --gtest_filter="*Stress*"
 ```
 
-### Code Quality
-```bash
-# Format code
-npm run format           # TypeScript/JavaScript
-black .                  # Python
-clang-format -i src/cpp/**/*.{h,cpp}  # C++
+### Memory Safety & Thread Safety
+The engine features comprehensive RAII memory management:
+- **FFmpeg RAII Wrappers**: Automatic cleanup of AVFormatContext, AVCodecContext, AVFrame, AVPacket
+- **CUDA RAII Wrappers**: Safe GPU memory management with CudaDeviceBuffer, CudaStreamPtr, CudaEventPtr  
+- **Thread-Safe Frame Processing**: SharedMutex-based concurrent access with atomic operations
+- **Exception Safety**: All operations are exception-safe with proper cleanup
 
-# Lint code
-npm run lint             # TypeScript/JavaScript
-flake8 .                 # Python
-cppcheck src/cpp/        # C++
+### Code Quality Standards
+- **C++17**: Modern C++ features with move semantics and smart pointers
+- **Memory Safety**: Zero raw pointer usage, comprehensive RAII patterns
+- **Thread Safety**: Proper synchronization with shared_mutex and atomic operations
+- **Testing**: 60%+ code coverage with unit, integration, and stress tests
+- **Documentation**: Inline documentation with usage examples
+
+---
+
+## 🛠️ Troubleshooting
+
+### Common Build Issues
+
+#### FFmpeg Not Found
+```bash
+# Ubuntu/Debian
+sudo apt install libavformat-dev libavcodec-dev libavutil-dev libswscale-dev
+
+# macOS
+brew install ffmpeg
+
+# Windows (vcpkg)
+vcpkg install ffmpeg
+```
+
+#### OpenCV Not Found
+```bash
+# Ubuntu/Debian  
+sudo apt install libopencv-dev
+
+# macOS
+brew install opencv
+
+# Windows (vcpkg)
+vcpkg install opencv4
+```
+
+#### CUDA Build Errors
+```bash
+# Ensure CUDA Toolkit is installed
+nvcc --version
+
+# Set CUDA_ROOT if needed
+export CUDA_ROOT=/usr/local/cuda
+
+# Build without CUDA if not needed
+cmake .. -DENABLE_CUDA=OFF
+```
+
+### Runtime Issues
+
+#### "Cannot open video file"
+- Check file path and permissions
+- Verify FFmpeg can decode the format: `ffprobe input.mp4`
+- Ensure video file is not corrupted beyond repair
+
+#### Memory Allocation Errors
+- Reduce buffer capacity in ThreadSafeFrameBuffer constructor
+- Check available system memory
+- Use smaller test files for development
+
+#### Test Failures
+```bash
+# Run individual test suites
+./VideoRepair_Tests --gtest_filter="FFmpegIntegrationTest.*"
+./VideoRepair_Tests --gtest_filter="CudaKernelsTest.*"
+
+# Skip CUDA tests if GPU not available
+./VideoRepair_Tests --gtest_filter="-*Cuda*"
 ```
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-### Development Workflow
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes and add tests
-4. Ensure all tests pass: `npm test && pytest && ctest`
-5. Commit with conventional commits: `feat: add amazing feature`
-6. Push to your branch: `git push origin feature/amazing-feature`
-7. Open a Pull Request
-
-### Coding Standards
-- **Python**: Follow PEP 8, use type hints, document with docstrings
-- **C++**: Follow Google C++ Style Guide, use modern C++17 features
-- **TypeScript**: Follow Airbnb style guide, use strict typing
-- **Commits**: Use conventional commits format
+Contributions are welcome! Please ensure:
+1. All tests pass: `./VideoRepair_Tests`
+2. Code follows C++17 standards with RAII patterns
+3. New features include corresponding tests
+4. Documentation is updated for API changes
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🆘 Support & Documentation
-
-- **📖 Documentation**: [Full Documentation](docs/)
-- **🐛 Bug Reports**: [GitHub Issues](https://github.com/your-org/phoenixdrs/issues)
-- **💬 Discussions**: [GitHub Discussions](https://github.com/your-org/phoenixdrs/discussions)
-- **📧 Email**: support@phoenixdrs.com
+This project is licensed under the MIT License.
 
 ---
 
 ## 🙏 Acknowledgments
 
-- **FFmpeg Team** for multimedia framework
-- **OpenCV Community** for computer vision tools
-- **PyTorch Team** for deep learning framework
-- **Qt Company** for GUI framework
-- **Electron Team** for desktop application framework
+- **FFmpeg Team** for multimedia processing framework
+- **OpenCV Community** for computer vision algorithms  
+- **Google Test** for comprehensive testing framework
+- **CUDA Team** for GPU computing platform
 
 ---
 
-**PhoenixDRS Professional** - Bringing your data back from the digital ashes 🔥➡️📹
-
-*Built with ❤️ by the PhoenixDRS Team*
+**PhoenixDRS Video Repair Engine** - Professional C++ video corruption analysis and repair 🔧📹

@@ -1,8 +1,11 @@
 #include "AdvancedVideoRepair/AdvancedVideoRepairEngine.h"
+#include "AdvancedVideoRepair/ThreadSafeFrameBuffer.h"
 #include <opencv2/imgproc.hpp>
 #include <opencv2/photo.hpp>
 #include <opencv2/video.hpp>
 #include <opencv2/objdetect.hpp>
+#include <thread>
+#include <atomic>
 
 #ifdef HAVE_CUDA
 #include <opencv2/cudaimgproc.hpp>
@@ -86,6 +89,152 @@ bool FrameReconstructor::reconstruct_missing_frame(
         }
         
         return true;
+        
+    } catch (const cv::Exception& e) {
+        return false;
+    }
+}
+
+/**
+ * @brief Thread-safe version of frame reconstruction using ThreadSafeFrameBuffer
+ * 
+ * This method provides the same functionality as reconstruct_missing_frame but
+ * uses thread-safe access to the frame buffer, allowing concurrent reconstruction
+ * operations on different frames.
+ */
+bool FrameReconstructor::reconstruct_missing_frame_safe(
+    const VideoRepair::ThreadSafeFrameBuffer& frame_buffer,
+    cv::Mat& output_frame,
+    int target_frame_number,
+    const RepairStrategy& strategy) {
+    
+    // Increment active reconstruction counter
+    active_reconstructions_.fetch_add(1);
+    
+    // Ensure we decrement the counter when leaving this function
+    struct ReconstructionGuard {
+        std::atomic<size_t>& counter;
+        ReconstructionGuard(std::atomic<size_t>& c) : counter(c) {}
+        ~ReconstructionGuard() { counter.fetch_sub(1); }
+    } guard(active_reconstructions_);
+    
+    if (frame_buffer.size() < 2) {
+        return false;
+    }
+    
+    try {
+        // Find best reference frame indices (simplified for thread-safety)
+        size_t buffer_size = frame_buffer.size();
+        std::vector<size_t> ref_indices;
+        
+        // Find frames before and after target frame number
+        for (size_t i = 0; i < buffer_size - 1; ++i) {
+            if (static_cast<int>(i) <= target_frame_number && 
+                static_cast<int>(i + 1) >= target_frame_number) {
+                ref_indices.push_back(i);
+                ref_indices.push_back(i + 1);
+                break;
+            }
+        }
+        
+        if (ref_indices.size() < 2) {
+            // Fallback to first and last frames
+            ref_indices = {0, buffer_size - 1};
+        }
+        
+        // Get reference frames thread-safely
+        cv::Mat prev_frame = frame_buffer.get_frame(ref_indices[0]);
+        cv::Mat next_frame = frame_buffer.get_frame(ref_indices[1]);
+        
+        if (prev_frame.empty() || next_frame.empty()) {
+            return false;
+        }
+        
+        // Calculate temporal position
+        double temporal_position = 0.5; // Simplified for now
+        if (ref_indices[1] != ref_indices[0]) {
+            temporal_position = static_cast<double>(target_frame_number - static_cast<int>(ref_indices[0])) /
+                              static_cast<double>(static_cast<int>(ref_indices[1]) - static_cast<int>(ref_indices[0]));
+            temporal_position = std::clamp(temporal_position, 0.0, 1.0);
+        }
+        
+        // Multiple reconstruction approaches (same as original method)
+        cv::Mat reconstructed1, reconstructed2, reconstructed3;
+        
+        // Method 1: Motion-compensated interpolation
+        bool method1_success = perform_motion_compensated_interpolation(
+            prev_frame, next_frame, reconstructed1, temporal_position, strategy);
+        
+        // Method 2: Optical flow based interpolation
+        bool method2_success = perform_optical_flow_interpolation(
+            prev_frame, next_frame, reconstructed2, temporal_position);
+        
+        // Method 3: Feature-based interpolation
+        bool method3_success = perform_feature_based_interpolation(
+            prev_frame, next_frame, reconstructed3, temporal_position);
+        
+        // Combine results using quality assessment
+        if (method1_success && method2_success) {
+            output_frame = blend_reconstruction_results(reconstructed1, reconstructed2, 0.7, 0.3);
+        } else if (method2_success) {
+            output_frame = reconstructed2;
+        } else if (method3_success) {
+            output_frame = reconstructed3;
+        } else {
+            // Last resort: simple linear interpolation
+            cv::addWeighted(prev_frame, 1.0 - temporal_position, next_frame, temporal_position, 0, output_frame);
+        }
+        
+        return true;
+        
+    } catch (const cv::Exception& e) {
+        return false;
+    }
+}
+
+/**
+ * @brief Thread-safe version of corrupted region repair
+ */
+bool FrameReconstructor::repair_corrupted_regions_safe(
+    cv::Mat& frame,
+    const cv::Mat& corruption_mask,
+    const VideoRepair::ThreadSafeFrameBuffer& frame_buffer,
+    const RepairStrategy& strategy) {
+    
+    if (frame.empty() || corruption_mask.empty() || frame_buffer.empty()) {
+        return false;
+    }
+    
+    // Increment active reconstruction counter
+    active_reconstructions_.fetch_add(1);
+    
+    // Ensure we decrement the counter when leaving this function
+    struct ReconstructionGuard {
+        std::atomic<size_t>& counter;
+        ReconstructionGuard(std::atomic<size_t>& c) : counter(c) {}
+        ~ReconstructionGuard() { counter.fetch_sub(1); }
+    } guard(active_reconstructions_);
+    
+    try {
+        // For thread-safety, limit to a few reference frames
+        std::vector<cv::Mat> reference_frames;
+        size_t max_refs = std::min(static_cast<size_t>(3), frame_buffer.size());
+        
+        // Get reference frames at regular intervals
+        for (size_t i = 0; i < max_refs; ++i) {
+            size_t frame_idx = (i * frame_buffer.size()) / max_refs;
+            cv::Mat ref_frame = frame_buffer.get_frame(frame_idx);
+            if (!ref_frame.empty()) {
+                reference_frames.push_back(ref_frame);
+            }
+        }
+        
+        if (reference_frames.empty()) {
+            return false;
+        }
+        
+        // Use the original repair method with limited reference frames
+        return repair_corrupted_regions(frame, corruption_mask, reference_frames, strategy);
         
     } catch (const cv::Exception& e) {
         return false;
@@ -530,6 +679,218 @@ void FrameReconstructor::apply_temporal_denoising(cv::Mat& frame, const std::vec
     cv::bitwise_not(edge_mask, inv_edge_mask);
     
     denoised.copyTo(frame, inv_edge_mask);
+}
+
+/**
+ * @brief Optical flow based interpolation
+ * 
+ * Implementation as specified in todo requirements
+ */
+bool FrameReconstructor::perform_optical_flow_interpolation(
+    const cv::Mat& prev_frame,
+    const cv::Mat& next_frame,
+    cv::Mat& interpolated_frame,
+    double temporal_position) {
+    
+    if (prev_frame.empty() || next_frame.empty()) {
+        return false;
+    }
+    
+    try {
+        // Convert to grayscale for optical flow calculation
+        cv::Mat prev_gray, next_gray;
+        cv::cvtColor(prev_frame, prev_gray, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(next_frame, next_gray, cv::COLOR_BGR2GRAY);
+        
+        // Calculate dense optical flow using Farneback method
+        cv::Mat flow;
+        cv::calcOpticalFlowPyrLK(prev_gray, next_gray, std::vector<cv::Point2f>(), 
+                                std::vector<cv::Point2f>(), std::vector<uchar>(), 
+                                std::vector<float>());
+        
+        // For simplicity, use basic dense optical flow
+        cv::calcOpticalFlowFarneback(prev_gray, next_gray, flow, 0.5, 3, 15, 3, 5, 1.2, 0);
+        
+        // Create interpolated frame using flow
+        interpolated_frame = cv::Mat::zeros(prev_frame.size(), prev_frame.type());
+        
+        for (int y = 0; y < prev_frame.rows; y++) {
+            for (int x = 0; x < prev_frame.cols; x++) {
+                cv::Vec2f flow_at_point = flow.at<cv::Vec2f>(y, x);
+                
+                // Calculate intermediate position based on temporal position
+                float interp_x = x + flow_at_point[0] * temporal_position;
+                float interp_y = y + flow_at_point[1] * temporal_position;
+                
+                // Bounds checking
+                if (interp_x >= 0 && interp_x < prev_frame.cols - 1 && 
+                    interp_y >= 0 && interp_y < prev_frame.rows - 1) {
+                    
+                    // Bilinear interpolation from previous frame
+                    cv::Vec3b interpolated_pixel;
+                    
+                    int x0 = static_cast<int>(interp_x);
+                    int y0 = static_cast<int>(interp_y);
+                    int x1 = x0 + 1;
+                    int y1 = y0 + 1;
+                    
+                    float wx = interp_x - x0;
+                    float wy = interp_y - y0;
+                    
+                    cv::Vec3b p00 = prev_frame.at<cv::Vec3b>(y0, x0);
+                    cv::Vec3b p01 = prev_frame.at<cv::Vec3b>(y0, x1);
+                    cv::Vec3b p10 = prev_frame.at<cv::Vec3b>(y1, x0);
+                    cv::Vec3b p11 = prev_frame.at<cv::Vec3b>(y1, x1);
+                    
+                    for (int c = 0; c < 3; c++) {
+                        interpolated_pixel[c] = static_cast<uchar>(
+                            p00[c] * (1 - wx) * (1 - wy) +
+                            p01[c] * wx * (1 - wy) +
+                            p10[c] * (1 - wx) * wy +
+                            p11[c] * wx * wy
+                        );
+                    }
+                    
+                    interpolated_frame.at<cv::Vec3b>(y, x) = interpolated_pixel;
+                } else {
+                    // Fallback to simple interpolation
+                    cv::Vec3b prev_pixel = prev_frame.at<cv::Vec3b>(y, x);
+                    cv::Vec3b next_pixel = next_frame.at<cv::Vec3b>(y, x);
+                    
+                    for (int c = 0; c < 3; c++) {
+                        interpolated_frame.at<cv::Vec3b>(y, x)[c] = static_cast<uchar>(
+                            prev_pixel[c] * (1.0 - temporal_position) + 
+                            next_pixel[c] * temporal_position
+                        );
+                    }
+                }
+            }
+        }
+        
+        return true;
+        
+    } catch (const cv::Exception& e) {
+        // Fallback to simple linear interpolation
+        cv::addWeighted(prev_frame, 1.0 - temporal_position, next_frame, temporal_position, 0, interpolated_frame);
+        return true;
+    }
+}
+
+/**
+ * @brief Feature-based interpolation using keypoints
+ */
+bool FrameReconstructor::perform_feature_based_interpolation(
+    const cv::Mat& prev_frame,
+    const cv::Mat& next_frame,
+    cv::Mat& interpolated_frame,
+    double temporal_position) {
+    
+    if (prev_frame.empty() || next_frame.empty()) {
+        return false;
+    }
+    
+    try {
+        // Convert to grayscale for feature detection
+        cv::Mat prev_gray, next_gray;
+        cv::cvtColor(prev_frame, prev_gray, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(next_frame, next_gray, cv::COLOR_BGR2GRAY);
+        
+        // Detect features using FAST or ORB detector
+        cv::Ptr<cv::FastFeatureDetector> detector = cv::FastFeatureDetector::create();
+        
+        std::vector<cv::KeyPoint> keypoints_prev, keypoints_next;
+        detector->detect(prev_gray, keypoints_prev);
+        detector->detect(next_gray, keypoints_next);
+        
+        // If we have enough features, use them for interpolation
+        if (keypoints_prev.size() > 10 && keypoints_next.size() > 10) {
+            // For simplicity, use region-based interpolation around features
+            interpolated_frame = cv::Mat::zeros(prev_frame.size(), prev_frame.type());
+            
+            // Create influence map based on keypoints
+            cv::Mat influence_map = cv::Mat::zeros(prev_frame.size(), CV_32F);
+            
+            const float influence_radius = 20.0f;
+            
+            for (const auto& kp : keypoints_prev) {
+                cv::circle(influence_map, kp.pt, influence_radius, 1.0f, -1);
+            }
+            
+            // Interpolate with different weights based on feature density
+            for (int y = 0; y < prev_frame.rows; y++) {
+                for (int x = 0; x < prev_frame.cols; x++) {
+                    float feature_influence = influence_map.at<float>(y, x);
+                    
+                    cv::Vec3b prev_pixel = prev_frame.at<cv::Vec3b>(y, x);
+                    cv::Vec3b next_pixel = next_frame.at<cv::Vec3b>(y, x);
+                    
+                    // Adjust temporal position based on feature influence
+                    double adjusted_temporal_pos = temporal_position;
+                    if (feature_influence > 0.5f) {
+                        // Near features, use more conservative interpolation
+                        adjusted_temporal_pos = 0.4 + temporal_position * 0.2;
+                    }
+                    
+                    for (int c = 0; c < 3; c++) {
+                        interpolated_frame.at<cv::Vec3b>(y, x)[c] = static_cast<uchar>(
+                            prev_pixel[c] * (1.0 - adjusted_temporal_pos) + 
+                            next_pixel[c] * adjusted_temporal_pos
+                        );
+                    }
+                }
+            }
+            
+            return true;
+        } else {
+            // Not enough features, fallback to simple interpolation
+            cv::addWeighted(prev_frame, 1.0 - temporal_position, next_frame, temporal_position, 0, interpolated_frame);
+            return true;
+        }
+        
+    } catch (const cv::Exception& e) {
+        // Fallback to simple linear interpolation
+        cv::addWeighted(prev_frame, 1.0 - temporal_position, next_frame, temporal_position, 0, interpolated_frame);
+        return true;
+    }
+}
+
+/**
+ * @brief Blend multiple reconstruction results using quality assessment
+ */
+cv::Mat FrameReconstructor::blend_reconstruction_results(
+    const cv::Mat& result1,
+    const cv::Mat& result2,
+    double weight1,
+    double weight2) {
+    
+    if (result1.empty()) return result2;
+    if (result2.empty()) return result1;
+    
+    cv::Mat blended;
+    
+    try {
+        // Normalize weights
+        double total_weight = weight1 + weight2;
+        if (total_weight > 0) {
+            weight1 /= total_weight;
+            weight2 /= total_weight;
+        } else {
+            weight1 = weight2 = 0.5;
+        }
+        
+        // Basic blending - could be enhanced with quality-aware blending
+        cv::addWeighted(result1, weight1, result2, weight2, 0, blended);
+        
+        // Apply edge-preserving filter to reduce blending artifacts
+        cv::Mat filtered;
+        cv::bilateralFilter(blended, filtered, 5, 80, 80);
+        
+        return filtered;
+        
+    } catch (const cv::Exception& e) {
+        // Return first result as fallback
+        return result1;
+    }
 }
 
 } // namespace AdvancedVideoRepair

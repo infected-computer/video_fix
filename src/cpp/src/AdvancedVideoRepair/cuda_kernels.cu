@@ -21,6 +21,7 @@
 #include <cuda_fp16.h>
 #include <cooperative_groups.h>
 #include <cub/cub.cuh>
+#include "CudaUtils.h"
 
 namespace cg = cooperative_groups;
 
@@ -832,6 +833,117 @@ cudaError_t launch_corruption_detection(
         frame_data, corruption_mask, width, height, threshold);
     
     return cudaGetLastError();
+}
+
+/**
+ * @brief Example high-level function using RAII wrappers
+ * 
+ * Demonstrates proper CUDA memory management with automatic cleanup
+ */
+cudaError_t perform_safe_frame_interpolation(
+    const float* h_prev_frame,
+    const float* h_next_frame, 
+    float* h_result,
+    int width, int height,
+    float temporal_position) {
+    
+    try {
+        // Use RAII wrappers for automatic memory management
+        VideoRepair::CudaDeviceBuffer<float> d_prev_frame(width * height * 4);
+        VideoRepair::CudaDeviceBuffer<float> d_next_frame(width * height * 4);
+        VideoRepair::CudaDeviceBuffer<float> d_result(width * height * 4);
+        VideoRepair::CudaDeviceBuffer<float2> d_motion_vectors(width * height);
+        
+        // Create CUDA stream for async operations
+        VideoRepair::CudaStreamPtr stream;
+        
+        // Copy input data to device - RAII ensures cleanup on exception
+        CUDA_CHECK(d_prev_frame.copy_from_host(h_prev_frame, 0, stream.get()));
+        CUDA_CHECK(d_next_frame.copy_from_host(h_next_frame, 0, stream.get()));
+        
+        // Initialize motion vectors (simplified - would normally estimate these)
+        CUDA_CHECK(d_motion_vectors.zero(stream.get()));
+        
+        // Launch interpolation kernel
+        cudaError_t result = launch_motion_compensated_interpolation(
+            d_prev_frame.get(),
+            d_next_frame.get(),
+            d_motion_vectors.get(),
+            d_result.get(),
+            width, height,
+            temporal_position,
+            stream.get()
+        );
+        
+        if (result != cudaSuccess) return result;
+        
+        // Copy result back to host
+        CUDA_CHECK(d_result.copy_to_host(h_result, 0, stream.get()));
+        
+        // Synchronize stream before function returns
+        CUDA_CHECK(stream.synchronize());
+        
+        return cudaSuccess;
+        
+    } catch (const std::exception& e) {
+        // RAII wrappers automatically clean up on exception
+        return cudaGetLastError();
+    }
+}
+
+/**
+ * @brief Example function demonstrating timing with CUDA events
+ */
+cudaError_t timed_corruption_detection(
+    const float* h_frame_data,
+    unsigned char* h_corruption_mask,
+    int width, int height,
+    float threshold,
+    float* elapsed_ms) {
+    
+    try {
+        // RAII wrappers for memory management
+        VideoRepair::CudaDeviceBuffer<float> d_frame_data(width * height * 4);
+        VideoRepair::CudaDeviceBuffer<unsigned char> d_corruption_mask(width * height);
+        
+        // RAII wrappers for timing
+        VideoRepair::CudaEventPtr start_event;
+        VideoRepair::CudaEventPtr stop_event;
+        
+        VideoRepair::CudaStreamPtr stream;
+        
+        // Record start time
+        CUDA_CHECK(start_event.record(stream.get()));
+        
+        // Copy input data
+        CUDA_CHECK(d_frame_data.copy_from_host(h_frame_data, 0, stream.get()));
+        
+        // Launch corruption detection kernel
+        cudaError_t result = launch_corruption_detection(
+            d_frame_data.get(),
+            d_corruption_mask.get(),
+            width, height,
+            threshold,
+            stream.get()
+        );
+        
+        if (result != cudaSuccess) return result;
+        
+        // Record stop time
+        CUDA_CHECK(stop_event.record(stream.get()));
+        
+        // Copy result back
+        CUDA_CHECK(d_corruption_mask.copy_to_host(h_corruption_mask, 0, stream.get()));
+        
+        // Wait for completion and get timing
+        CUDA_CHECK(stop_event.synchronize());
+        *elapsed_ms = stop_event.elapsed_time(start_event);
+        
+        return cudaSuccess;
+        
+    } catch (const std::exception& e) {
+        return cudaGetLastError();
+    }
 }
 
 } // extern "C"

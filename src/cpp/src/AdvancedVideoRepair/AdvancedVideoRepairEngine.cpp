@@ -1,4 +1,5 @@
 #include "AdvancedVideoRepair/AdvancedVideoRepairEngine.h"
+#include "AdvancedVideoRepair/FFmpegUtils.h"
 #include <iostream>
 #include <fstream>
 #include <chrono>
@@ -176,22 +177,24 @@ AdvancedRepairResult AdvancedVideoRepairEngine::repair_video_file(
  * @brief Setup FFmpeg input context with proper error handling
  */
 bool AdvancedVideoRepairEngine::setup_input_context(const std::string& input_file) {
-    // Allocate format context
-    m_input_format_ctx = avformat_alloc_context();
-    if (!m_input_format_ctx) {
+    // Allocate format context using RAII wrapper
+    AVFormatContext* ctx = avformat_alloc_context();
+    if (!ctx) {
         log_message("Failed to allocate input format context", 0);
         return false;
     }
     
-    // Set options for robust parsing
-    AVDictionary* opts = nullptr;
-    av_dict_set(&opts, "scan_all_pmts", "1", 0);
-    av_dict_set(&opts, "analyzeduration", "10000000", 0); // 10 seconds
-    av_dict_set(&opts, "probesize", "10000000", 0);       // 10MB probe
+    // Set options for robust parsing using RAII wrapper
+    VideoRepair::AVDictionaryPtr opts;
+    av_dict_set(opts.get_ptr(), "scan_all_pmts", "1", 0);
+    av_dict_set(opts.get_ptr(), "analyzeduration", "10000000", 0); // 10 seconds
+    av_dict_set(opts.get_ptr(), "probesize", "10000000", 0);       // 10MB probe
     
     // Open input file
-    int ret = avformat_open_input(&m_input_format_ctx, input_file.c_str(), nullptr, &opts);
-    av_dict_free(&opts);
+    int ret = avformat_open_input(&ctx, input_file.c_str(), nullptr, opts.get_ptr());
+    
+    // Move ownership to RAII wrapper
+    m_input_format_ctx.reset(ctx);
     
     if (ret < 0) {
         char error_buf[AV_ERROR_MAX_STRING_SIZE];
@@ -201,7 +204,7 @@ bool AdvancedVideoRepairEngine::setup_input_context(const std::string& input_fil
     }
     
     // Find stream information with extended probing for corrupted files
-    ret = avformat_find_stream_info(m_input_format_ctx, nullptr);
+    ret = avformat_find_stream_info(m_input_format_ctx.get(), nullptr);
     if (ret < 0) {
         char error_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, error_buf, sizeof(error_buf));
@@ -222,15 +225,14 @@ bool AdvancedVideoRepairEngine::setup_input_context(const std::string& input_fil
                 continue;
             }
             
-            AVCodecContext* codec_ctx = avcodec_alloc_context3(codec);
+            VideoRepair::AVCodecContextPtr codec_ctx(avcodec_alloc_context3(codec));
             if (!codec_ctx) {
                 log_message("Failed to allocate codec context for stream " + std::to_string(i), 1);
                 continue;
             }
             
-            ret = avcodec_parameters_to_context(codec_ctx, stream->codecpar);
+            ret = avcodec_parameters_to_context(codec_ctx.get(), stream->codecpar);
             if (ret < 0) {
-                avcodec_free_context(&codec_ctx);
                 continue;
             }
             
@@ -238,14 +240,13 @@ bool AdvancedVideoRepairEngine::setup_input_context(const std::string& input_fil
             codec_ctx->error_concealment = FF_EC_GUESS_MVS | FF_EC_DEBLOCK;
             codec_ctx->err_recognition = AV_EF_CRCCHECK | AV_EF_BITSTREAM | AV_EF_CAREFUL;
             
-            ret = avcodec_open2(codec_ctx, codec, nullptr);
+            ret = avcodec_open2(codec_ctx.get(), codec, nullptr);
             if (ret < 0) {
-                avcodec_free_context(&codec_ctx);
                 log_message("Failed to open codec for stream " + std::to_string(i), 1);
                 continue;
             }
             
-            m_decoder_contexts.push_back(codec_ctx);
+            m_decoder_contexts.push_back(std::move(codec_ctx));
         }
     }
     
@@ -268,14 +269,18 @@ bool AdvancedVideoRepairEngine::setup_output_context(const std::string& output_f
     else if (ext == ".mkv") format_name = "matroska";
     else format_name = "mp4"; // Default
     
-    // Allocate output format context
-    int ret = avformat_alloc_output_context2(&m_output_format_ctx, nullptr, format_name, output_file.c_str());
+    // Allocate output format context using RAII wrapper
+    AVFormatContext* output_ctx = nullptr;
+    int ret = avformat_alloc_output_context2(&output_ctx, nullptr, format_name, output_file.c_str());
     if (ret < 0) {
         char error_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, error_buf, sizeof(error_buf));
         log_message("Failed to allocate output context: " + std::string(error_buf), 0);
         return false;
     }
+    
+    // Move ownership to RAII wrapper
+    m_output_format_ctx.reset(output_ctx);
     
     // Create output streams based on input streams
     for (unsigned int i = 0; i < m_input_format_ctx->nb_streams; i++) {
@@ -284,7 +289,7 @@ bool AdvancedVideoRepairEngine::setup_output_context(const std::string& output_f
         if (input_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO ||
             input_stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
             
-            AVStream* output_stream = avformat_new_stream(m_output_format_ctx, nullptr);
+            AVStream* output_stream = avformat_new_stream(m_output_format_ctx.get(), nullptr);
             if (!output_stream) {
                 log_message("Failed to create output stream", 0);
                 return false;
@@ -622,35 +627,20 @@ void AdvancedVideoRepairEngine::log_message(const std::string& message, int leve
 }
 
 void AdvancedVideoRepairEngine::cleanup_contexts() {
-    // Clean up decoder contexts
-    for (auto* ctx : m_decoder_contexts) {
-        if (ctx) {
-            avcodec_free_context(&ctx);
-        }
-    }
+    // Clean up decoder contexts - RAII wrappers handle automatic cleanup
     m_decoder_contexts.clear();
     
-    // Clean up encoder contexts
-    for (auto* ctx : m_encoder_contexts) {
-        if (ctx) {
-            avcodec_free_context(&ctx);
-        }
-    }
+    // Clean up encoder contexts - RAII wrappers handle automatic cleanup
     m_encoder_contexts.clear();
     
-    // Clean up format contexts
-    if (m_input_format_ctx) {
-        avformat_close_input(&m_input_format_ctx);
-        m_input_format_ctx = nullptr;
+    // Clean up format contexts - RAII wrappers handle automatic cleanup
+    if (m_output_format_ctx && m_output_format_ctx->pb) {
+        avio_closep(&m_output_format_ctx->pb);
     }
     
-    if (m_output_format_ctx) {
-        if (m_output_format_ctx->pb) {
-            avio_closep(&m_output_format_ctx->pb);
-        }
-        avformat_free_context(m_output_format_ctx);
-        m_output_format_ctx = nullptr;
-    }
+    // Reset RAII wrappers - they will automatically call proper cleanup
+    m_input_format_ctx.reset();
+    m_output_format_ctx.reset();
 }
 
 bool AdvancedVideoRepairEngine::initialize_ffmpeg() {
@@ -671,6 +661,482 @@ void AdvancedVideoRepairEngine::shutdown() {
         m_initialized = false;
         log_message("Advanced Video Repair Engine shut down", 2);
     }
+}
+
+/**
+ * @brief Comprehensive corruption analysis for video files
+ * 
+ * Implements detailed analysis as specified in the requirements:
+ * 1. Check file header integrity
+ * 2. Parse container structure 
+ * 3. Validate essential atoms/boxes
+ * 4. Check stream integrity
+ */
+CorruptionAnalysis AdvancedVideoRepairEngine::analyze_corruption(const std::string& file_path) {
+    CorruptionAnalysis result;
+    
+    try {
+        log_message("Starting corruption analysis for: " + file_path, 2);
+        
+        // 1. Check file header
+        if (!validate_file_header(file_path)) {
+            result.detected_issues.push_back(CorruptionType::HEADER_DAMAGE);
+            log_message("Header corruption detected", 1);
+        }
+        
+        // 2. Parse container structure
+        ContainerFormat format = detect_container_format(file_path);
+        
+        if (format == ContainerFormat::MP4_ISOBMFF || format == ContainerFormat::MOV_QUICKTIME) {
+            // MP4/MOV specific analysis
+            CorruptionAnalysis mp4_analysis = m_container_analyzer->analyze_mp4_structure(file_path);
+            
+            // Merge analysis results
+            result.detected_issues.insert(result.detected_issues.end(), 
+                                        mp4_analysis.detected_issues.begin(), 
+                                        mp4_analysis.detected_issues.end());
+            result.container_issues = mp4_analysis.container_issues;
+            
+        } else if (format == ContainerFormat::AVI_RIFF) {
+            // AVI specific analysis
+            CorruptionAnalysis avi_analysis = m_container_analyzer->analyze_avi_structure(file_path);
+            
+            result.detected_issues.insert(result.detected_issues.end(), 
+                                        avi_analysis.detected_issues.begin(), 
+                                        avi_analysis.detected_issues.end());
+            
+        } else if (format == ContainerFormat::MKV_MATROSKA) {
+            // MKV specific analysis
+            CorruptionAnalysis mkv_analysis = m_container_analyzer->analyze_mkv_structure(file_path);
+            
+            result.detected_issues.insert(result.detected_issues.end(), 
+                                        mkv_analysis.detected_issues.begin(), 
+                                        mkv_analysis.detected_issues.end());
+        }
+        
+        // 3. Validate essential atoms/boxes (format-specific)
+        if (format == ContainerFormat::MP4_ISOBMFF || format == ContainerFormat::MOV_QUICKTIME) {
+            // Check for missing moov atom
+            if (result.container_issues.missing_moov_atom) {
+                result.detected_issues.push_back(CorruptionType::MISSING_FRAMES);
+                log_message("Missing moov atom detected", 1);
+            }
+            
+            // Check for corrupted mdat atom
+            if (result.container_issues.corrupted_mdat_atom) {
+                result.detected_issues.push_back(CorruptionType::BITSTREAM_ERRORS);
+                log_message("Corrupted mdat atom detected", 1);
+            }
+            
+            // Check index corruption
+            if (result.container_issues.invalid_chunk_offsets) {
+                result.detected_issues.push_back(CorruptionType::INDEX_CORRUPTION);
+                log_message("Invalid chunk offsets detected", 1);
+            }
+        }
+        
+        // 4. Check stream integrity using FFmpeg
+        bool stream_integrity_ok = check_stream_integrity(file_path, result);
+        if (!stream_integrity_ok) {
+            result.detected_issues.push_back(CorruptionType::BITSTREAM_ERRORS);
+            log_message("Stream integrity issues detected", 1);
+        }
+        
+        // Calculate overall corruption percentage
+        result.overall_corruption_percentage = calculate_corruption_percentage(result);
+        
+        // Determine if file is repairable
+        result.is_repairable = determine_repairability(result);
+        
+        // Generate detailed report
+        result.detailed_report = generate_analysis_report(result);
+        
+        log_message("Corruption analysis complete. Issues found: " + 
+                   std::to_string(result.detected_issues.size()), 2);
+        
+        return result;
+        
+    } catch (const std::exception& e) {
+        log_message("Error during corruption analysis: " + std::string(e.what()), 0);
+        result.is_repairable = false;
+        result.detailed_report = "Analysis failed: " + std::string(e.what());
+        return result;
+    }
+}
+
+/**
+ * @brief Validate file header integrity
+ */
+bool AdvancedVideoRepairEngine::validate_file_header(const std::string& file_path) {
+    std::ifstream file(file_path, std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+    
+    // Read first 32 bytes for header analysis
+    char header[32];
+    file.read(header, sizeof(header));
+    
+    if (file.gcount() < 8) {
+        return false; // File too small
+    }
+    
+    // Check for known video file signatures
+    
+    // MP4/MOV - starts with ftyp box
+    if (header[4] == 'f' && header[5] == 't' && header[6] == 'y' && header[7] == 'p') {
+        return true;
+    }
+    
+    // AVI - starts with RIFF
+    if (header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F') {
+        // Check for AVI signature at offset 8
+        if (header[8] == 'A' && header[9] == 'V' && header[10] == 'I' && header[11] == ' ') {
+            return true;
+        }
+    }
+    
+    // MKV - EBML signature
+    if (header[0] == 0x1A && header[1] == 0x45 && header[2] == 0xDF && header[3] == 0xA3) {
+        return true;
+    }
+    
+    // If no known signature found, consider header corrupted
+    return false;
+}
+
+/**
+ * @brief Check stream integrity using FFmpeg
+ */
+bool AdvancedVideoRepairEngine::check_stream_integrity(const std::string& file_path, CorruptionAnalysis& analysis) {
+    // Try to open the file with FFmpeg
+    VideoRepair::AVFormatContextPtr format_ctx;
+    AVFormatContext* ctx = avformat_alloc_context();
+    if (!ctx) {
+        return false;
+    }
+    
+    format_ctx.reset(ctx);
+    
+    // Set options for maximum error tolerance
+    VideoRepair::AVDictionaryPtr opts;
+    av_dict_set(opts.get_ptr(), "fflags", "+ignidx+igndts+genpts", 0);
+    av_dict_set(opts.get_ptr(), "analyzeduration", "10000000", 0);
+    av_dict_set(opts.get_ptr(), "probesize", "10000000", 0);
+    
+    int ret = avformat_open_input(format_ctx.get_ptr(), file_path.c_str(), nullptr, opts.get_ptr());
+    if (ret < 0) {
+        // Severe corruption - cannot even open
+        analysis.bitstream_issues.corrupted_sps_pps = true;
+        return false;
+    }
+    
+    // Try to find stream info
+    ret = avformat_find_stream_info(format_ctx.get(), nullptr);
+    if (ret < 0) {
+        // Stream info problems
+        analysis.bitstream_issues.missing_reference_frames++;
+        return false;
+    }
+    
+    // Check each stream
+    bool has_issues = false;
+    for (unsigned int i = 0; i < format_ctx->nb_streams; i++) {
+        AVStream* stream = format_ctx->streams[i];
+        
+        if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+            // Try to create decoder for video stream
+            const AVCodec* codec = avcodec_find_decoder(stream->codecpar->codec_id);
+            if (!codec) {
+                has_issues = true;
+                continue;
+            }
+            
+            VideoRepair::AVCodecContextPtr codec_ctx(avcodec_alloc_context3(codec));
+            if (!codec_ctx) {
+                has_issues = true;
+                continue;
+            }
+            
+            ret = avcodec_parameters_to_context(codec_ctx.get(), stream->codecpar);
+            if (ret < 0) {
+                has_issues = true;
+                continue;
+            }
+            
+            ret = avcodec_open2(codec_ctx.get(), codec, nullptr);
+            if (ret < 0) {
+                has_issues = true;
+                analysis.bitstream_issues.corrupted_sps_pps = true;
+            }
+        }
+    }
+    
+    return !has_issues;
+}
+
+/**
+ * @brief Calculate overall corruption percentage
+ */
+double AdvancedVideoRepairEngine::calculate_corruption_percentage(const CorruptionAnalysis& analysis) {
+    if (analysis.detected_issues.empty()) {
+        return 0.0;
+    }
+    
+    // Weight different corruption types
+    double total_weight = 0.0;
+    double corruption_weight = 0.0;
+    
+    for (const auto& issue : analysis.detected_issues) {
+        switch (issue) {
+            case CorruptionType::HEADER_DAMAGE:
+                total_weight += 20.0;
+                corruption_weight += 20.0;
+                break;
+            case CorruptionType::CONTAINER_STRUCTURE:
+                total_weight += 30.0;
+                corruption_weight += 30.0;
+                break;
+            case CorruptionType::BITSTREAM_ERRORS:
+                total_weight += 25.0;
+                corruption_weight += 25.0;
+                break;
+            case CorruptionType::MISSING_FRAMES:
+                total_weight += 15.0;
+                corruption_weight += 15.0;
+                break;
+            case CorruptionType::INDEX_CORRUPTION:
+                total_weight += 10.0;
+                corruption_weight += 10.0;
+                break;
+            default:
+                total_weight += 5.0;
+                corruption_weight += 5.0;
+                break;
+        }
+    }
+    
+    return total_weight > 0 ? (corruption_weight / 100.0) * 100.0 : 0.0;
+}
+
+/**
+ * @brief Determine if file is repairable based on analysis
+ */
+bool AdvancedVideoRepairEngine::determine_repairability(const CorruptionAnalysis& analysis) {
+    // File is considered unrepairable if:
+    // 1. Corruption percentage is too high (>80%)
+    // 2. Critical structures are completely missing
+    // 3. Both header and container structure are corrupted
+    
+    if (analysis.overall_corruption_percentage > 80.0) {
+        return false;
+    }
+    
+    bool has_header_damage = false;
+    bool has_container_damage = false;
+    
+    for (const auto& issue : analysis.detected_issues) {
+        if (issue == CorruptionType::HEADER_DAMAGE) {
+            has_header_damage = true;
+        }
+        if (issue == CorruptionType::CONTAINER_STRUCTURE) {
+            has_container_damage = true;
+        }
+    }
+    
+    // If both header and container are damaged, very difficult to repair
+    if (has_header_damage && has_container_damage) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * @brief Generate detailed analysis report
+ */
+std::string AdvancedVideoRepairEngine::generate_analysis_report(const CorruptionAnalysis& analysis) {
+    std::string report = "=== Video Corruption Analysis Report ===\n\n";
+    
+    report += "Overall Corruption: " + std::to_string(analysis.overall_corruption_percentage) + "%\n";
+    report += "Repairable: " + std::string(analysis.is_repairable ? "Yes" : "No") + "\n\n";
+    
+    if (!analysis.detected_issues.empty()) {
+        report += "Detected Issues:\n";
+        for (const auto& issue : analysis.detected_issues) {
+            switch (issue) {
+                case CorruptionType::HEADER_DAMAGE:
+                    report += "- File header corruption\n";
+                    break;
+                case CorruptionType::CONTAINER_STRUCTURE:
+                    report += "- Container structure damage\n";
+                    break;
+                case CorruptionType::BITSTREAM_ERRORS:
+                    report += "- Video bitstream errors\n";
+                    break;
+                case CorruptionType::MISSING_FRAMES:
+                    report += "- Missing or damaged frames\n";
+                    break;
+                case CorruptionType::INDEX_CORRUPTION:
+                    report += "- Index/seek table corruption\n";
+                    break;
+                case CorruptionType::SYNC_LOSS:
+                    report += "- Audio/video sync issues\n";
+                    break;
+                case CorruptionType::INCOMPLETE_FRAMES:
+                    report += "- Incomplete frame data\n";
+                    break;
+                case CorruptionType::TEMPORAL_ARTIFACTS:
+                    report += "- Temporal inconsistencies\n";
+                    break;
+            }
+        }
+    }
+    
+    // Container-specific issues
+    if (analysis.container_issues.missing_moov_atom) {
+        report += "\nContainer Issues:\n";
+        report += "- Missing moov atom (MP4/MOV)\n";
+    }
+    if (analysis.container_issues.corrupted_mdat_atom) {
+        report += "- Corrupted mdat atom\n";
+    }
+    if (analysis.container_issues.invalid_chunk_offsets) {
+        report += "- Invalid chunk offset table\n";
+    }
+    
+    // Bitstream issues
+    if (analysis.bitstream_issues.corrupted_sps_pps) {
+        report += "\nBitstream Issues:\n";
+        report += "- Corrupted SPS/PPS headers\n";
+    }
+    if (analysis.bitstream_issues.missing_reference_frames > 0) {
+        report += "- Missing reference frames: " + 
+                 std::to_string(analysis.bitstream_issues.missing_reference_frames) + "\n";
+    }
+    
+    return report;
+}
+
+/**
+ * @brief Detect container format from file header
+ */
+ContainerFormat AdvancedVideoRepairEngine::detect_container_format(const std::string& file_path) {
+    std::ifstream file(file_path, std::ios::binary);
+    if (!file.is_open()) {
+        return ContainerFormat::UNKNOWN;
+    }
+    
+    // Read first 32 bytes for format detection
+    char header[32];
+    file.read(header, sizeof(header));
+    
+    if (file.gcount() < 12) {
+        return ContainerFormat::UNKNOWN;
+    }
+    
+    // MP4/MOV detection - look for ftyp box
+    if (header[4] == 'f' && header[5] == 't' && header[6] == 'y' && header[7] == 'p') {
+        // Check brand to distinguish MP4 from MOV
+        std::string brand(header + 8, 4);
+        if (brand == "isom" || brand == "mp41" || brand == "mp42" || brand == "avc1") {
+            return ContainerFormat::MP4_ISOBMFF;
+        } else if (brand == "qt  ") {
+            return ContainerFormat::MOV_QUICKTIME;
+        } else {
+            return ContainerFormat::MP4_ISOBMFF; // Default to MP4
+        }
+    }
+    
+    // AVI detection - RIFF header with AVI signature
+    if (header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F') {
+        if (header[8] == 'A' && header[9] == 'V' && header[10] == 'I' && header[11] == ' ') {
+            return ContainerFormat::AVI_RIFF;
+        }
+    }
+    
+    // MKV detection - EBML signature
+    if (header[0] == 0x1A && header[1] == 0x45 && header[2] == 0xDF && header[3] == 0xA3) {
+        return ContainerFormat::MKV_MATROSKA;
+    }
+    
+    // MPEG-TS detection - sync byte pattern
+    if (header[0] == 0x47) {
+        // Check for additional sync bytes at 188-byte intervals
+        file.seekg(188, std::ios::beg);
+        char sync_byte;
+        file.read(&sync_byte, 1);
+        if (sync_byte == 0x47) {
+            return ContainerFormat::TS_MPEG;
+        }
+    }
+    
+    // M2TS detection (Blu-ray)
+    if (header[0] == 0x47 && header[4] == 0x47) {
+        // M2TS has 4-byte timestamp prefix
+        return ContainerFormat::M2TS_BLURAY;
+    }
+    
+    // MXF detection - KLV signature
+    if (header[0] == 0x06 && header[1] == 0x0E && header[2] == 0x2B && header[3] == 0x34) {
+        return ContainerFormat::MXF_SMPTE;
+    }
+    
+    return ContainerFormat::UNKNOWN;
+}
+
+/**
+ * @brief Detect video codec from file
+ */
+VideoCodec AdvancedVideoRepairEngine::detect_video_codec(const std::string& file_path) {
+    // Use FFmpeg to detect codec
+    VideoRepair::AVFormatContextPtr format_ctx;
+    AVFormatContext* ctx = avformat_alloc_context();
+    if (!ctx) {
+        return VideoCodec::UNKNOWN_CODEC;
+    }
+    
+    format_ctx.reset(ctx);
+    
+    int ret = avformat_open_input(format_ctx.get_ptr(), file_path.c_str(), nullptr, nullptr);
+    if (ret < 0) {
+        return VideoCodec::UNKNOWN_CODEC;
+    }
+    
+    ret = avformat_find_stream_info(format_ctx.get(), nullptr);
+    if (ret < 0) {
+        return VideoCodec::UNKNOWN_CODEC;
+    }
+    
+    // Find first video stream
+    for (unsigned int i = 0; i < format_ctx->nb_streams; i++) {
+        if (format_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+            AVCodecID codec_id = format_ctx->streams[i]->codecpar->codec_id;
+            
+            switch (codec_id) {
+                case AV_CODEC_ID_H264:
+                    return VideoCodec::H264_AVC;
+                case AV_CODEC_ID_HEVC:
+                    return VideoCodec::H265_HEVC;
+                case AV_CODEC_ID_VP9:
+                    return VideoCodec::VP9_GOOGLE;
+                case AV_CODEC_ID_AV1:
+                    return VideoCodec::AV1_AOMedia;
+                case AV_CODEC_ID_PRORES:
+                    return VideoCodec::PRORES_APPLE;
+                case AV_CODEC_ID_DNXHD:
+                    return VideoCodec::DNX_AVID;
+                case AV_CODEC_ID_MJPEG:
+                    return VideoCodec::MJPEG_MOTION;
+                case AV_CODEC_ID_DVVIDEO:
+                    return VideoCodec::DV_DIGITAL;
+                default:
+                    return VideoCodec::UNKNOWN_CODEC;
+            }
+        }
+    }
+    
+    return VideoCodec::UNKNOWN_CODEC;
 }
 
 } // namespace AdvancedVideoRepair
